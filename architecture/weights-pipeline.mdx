@@ -24,7 +24,18 @@ posts it to the chain.
 
 _Source: `src/platform_network/master/service.py:85-139`; `src/platform_network/master/aggregator.py:37-73`._
 
-{/* DIAGRAM HOOK: T16 — weight-flow Mermaid diagram goes here */}
+```mermaid
+flowchart TB
+    epoch(["Epoch boundary"]) --> collect["1 · Collect raw challenge weights"]
+    collect --> normch["2 · Normalize each challenge's weights"]
+    normch --> normem["3 · Normalize emissions"]
+    normem --> combine["4 · Combine into per-hotkey scores"]
+    combine --> mapuid["5 · Map miner hotkeys to Bittensor UIDs<br/>(drop no-UID; exclude UID 0)"]
+    mapuid --> normuid["6 · Normalize the UID vector"]
+    normuid --> publish["7 · Publish at /v1/weights/latest"]
+    publish --> submit["8 · On-chain submitter posts set_weights"]
+    submit --> chain(["Bittensor chain"])
+```
 
 ## 1. Collect raw challenge weights
 

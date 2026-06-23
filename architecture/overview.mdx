@@ -26,7 +26,32 @@ Kubernetes and no `runtime.backend` selector — the only backend is Swarm.
 
 _Source: `README.md:32-36`; `docs/architecture.md:36-40`, `docs/architecture.md:67`._
 
-{/* DIAGRAM HOOK: T16 — architecture-overview Mermaid diagram goes here */}
+```mermaid
+flowchart TB
+    subgraph swarm["Docker Swarm"]
+        subgraph manager["Master (manager) node"]
+            proxy["Subnet master proxy<br/>/v1/registry · /v1/weights/latest · /health"]
+            broker["Broker"]
+            supervisor["Supervisor"]
+            challenges["Challenge services<br/>(one per challenge)"]
+            db[("Control-plane PostgreSQL")]
+        end
+        subgraph workers["Worker nodes"]
+            cpu["CPU eval jobs"]
+            gpu["GPU eval jobs"]
+        end
+    end
+    submitter["On-chain submitter<br/>(validator node)"]
+    chain["Bittensor chain"]
+
+    proxy --> challenges
+    supervisor -. watchdog .-> broker
+    broker -->|"dispatch short-lived jobs"| cpu
+    broker -->|"dispatch short-lived jobs"| gpu
+    proxy --- db
+    submitter -->|"reads /v1/weights/latest"| proxy
+    submitter -->|"set_weights"| chain
+```
 
 ## Components
 

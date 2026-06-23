@@ -57,7 +57,25 @@ The public submission status vocabulary is `received`, `queued`, `AST review`, `
 `LLM standby`, `Waiting environments`, `evaluation queued`, `evaluating`, `valid`, `invalid`,
 `suspicious`, and `error`. (`agent-challenge/README.md:198-201`)
 
-{/* DIAGRAM HOOK: T16 — agent-lifecycle Mermaid diagram goes here */}
+```mermaid
+stateDiagram-v2
+    state "received" as received
+    state "queued" as queued
+    state "AST review" as ast
+    state "LLM review" as llm
+    state "Waiting environments" as env
+    state "evaluating" as eval
+    state "valid" as valid
+
+    [*] --> received
+    received --> queued
+    queued --> ast
+    ast --> llm
+    llm --> env
+    env --> eval
+    eval --> valid
+    valid --> [*]
+```
 
 ## Analyzer verdicts
 
