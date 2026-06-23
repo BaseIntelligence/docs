@@ -74,3 +74,17 @@ In non-production environments these checks are skipped — each validator retur
 <Tip>
   Set `environment: production` only once your database is PostgreSQL and your image allowlist uses fully-qualified registry prefixes (for example `ghcr.io/<org>/`). Otherwise the command fails fast at startup (`base/src/platform_network/config/policy.py:97-102`).
 </Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Security model" icon="shield-halved" href="/architecture/security">
+    How the admin token and production policy protect the master.
+  </Card>
+  <Card title="Settings reference" icon="sliders" href="/reference/settings">
+    Every key, type, and default these files accept.
+  </Card>
+  <Card title="Configuration examples" icon="file-code" href="/reference/config-examples">
+    Copy-ready master and validator configuration files.
+  </Card>
+</CardGroup>

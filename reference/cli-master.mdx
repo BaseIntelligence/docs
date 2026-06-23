@@ -129,3 +129,20 @@ platform master worker label <node> --workload cpu
 <Tip>
   `worker token` selects the **Swarm role** with `--role worker|manager`. The **workload class** (cpu/gpu) is set separately with `worker label --workload cpu|gpu` after the node joins (`base/src/platform_network/cli_app/main.py:676`).
 </Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master architecture" icon="server" href="/architecture/master">
+    The control-plane services these commands run.
+  </Card>
+  <Card title="Swarm" icon="diagram-project" href="/architecture/swarm">
+    How worker nodes execute challenge and evaluation jobs.
+  </Card>
+  <Card title="Configuration examples" icon="file-code" href="/reference/config-examples">
+    The annotated `master.example.yaml` these commands load.
+  </Card>
+  <Card title="Settings reference" icon="sliders" href="/reference/settings">
+    Every `master.*` and `docker.*` key.
+  </Card>
+</CardGroup>

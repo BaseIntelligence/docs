@@ -51,6 +51,17 @@ The SDK's mount transport moves mount content across nodes without any shared fi
 
 Generated challenges combine the SDK executor with the weight contract and database helpers described in [Creating a challenge](/challenges/creating). For a worked example of an SDK-driven challenge that runs evaluation containers through the broker, the Agent Challenge worker uses this execution substrate; see the [Agent Challenge overview](/challenges/agent-challenge).
 
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    The Docker broker that dispatches SDK evaluation jobs.
+  </Card>
+  <Card title="Swarm" icon="server" href="/architecture/swarm">
+    How eval jobs are scheduled across CPU and GPU nodes.
+  </Card>
+</CardGroup>
+
 ---
 
 Sources: `base/src/platform_network/challenge_sdk/__init__.py:1` (exports), `base/src/platform_network/challenge_sdk/config.py:8` (`DockerExecutorSettings`, `CHALLENGE_` prefix and defaults), `base/src/platform_network/challenge_sdk/executors/docker.py:1` (secure Docker CLI executor), `base/src/platform_network/challenge_sdk/mount_transport.py:1` (cross-node mount transport), `agent-challenge/README.md:262` (own_runner backend uses the broker execution substrate).

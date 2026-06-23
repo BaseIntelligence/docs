@@ -60,3 +60,17 @@ The master weights freshness window is defined by
 `MASTER_WEIGHTS_FRESHNESS_SECONDS = 720` (`schemas/weights.py:8`). The
 `expires_at` field is validated to be in the future when the response is built
 (`schemas/weights.py:44-48`).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Weights pipeline" icon="scale-balanced" href="/architecture/weights-pipeline">
+    How this vector is computed and normalized each epoch.
+  </Card>
+  <Card title="Validator network" icon="shield-halved" href="/architecture/validator-network">
+    The submit-only process that posts this vector on-chain.
+  </Card>
+  <Card title="Weights schema" icon="table-list" href="/reference/weights-schema">
+    The field-level models behind this response.
+  </Card>
+</CardGroup>

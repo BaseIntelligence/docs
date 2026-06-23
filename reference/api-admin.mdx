@@ -161,3 +161,17 @@ The master collects per-challenge weights by calling each challenge's
 and an `X-Platform-Challenge-Slug` header (`challenge_client.py:31-36`). The
 challenge replies with a `ChallengeWeightsResponse`
 (`challenge_client.py:43`; see [Weights schema](/reference/weights-schema)).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Security model" icon="shield-halved" href="/architecture/security">
+    How the admin token gates these management routes.
+  </Card>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    The internal Docker broker documented on this page.
+  </Card>
+  <Card title="API overview" icon="plug" href="/reference/api">
+    The full endpoint map and authentication models.
+  </Card>
+</CardGroup>

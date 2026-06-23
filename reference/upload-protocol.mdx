@@ -122,3 +122,17 @@ The `path` you sign must match the request path exactly
 (`/v1/challenges/{challenge_name}/submissions`), and `body_hash` must be the
 SHA-256 hex digest of the exact bytes you send.
 </Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Security model" icon="shield-halved" href="/architecture/security">
+    How signed uploads are verified at the proxy.
+  </Card>
+  <Card title="Submit to a challenge" icon="upload" href="/miners/submitting">
+    The miner-side guide to building and signing a submission.
+  </Card>
+  <Card title="Proxy API" icon="shuffle" href="/reference/api-proxy">
+    The proxy routes that sit alongside this upload.
+  </Card>
+</CardGroup>

@@ -86,3 +86,14 @@ The `challenges.status` column uses the `ChallengeStatus` enum (`base/src/platfo
 <Tip>
   New challenges default to `draft` and must be activated before validators evaluate them (`base/src/platform_network/db/models.py:78-79`). See the [Challenge CLI](/reference/cli-challenge) for `activate` / `deactivate`.
 </Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Database architecture" icon="database" href="/architecture/database">
+    The schema and tables these migrations create and maintain.
+  </Card>
+  <Card title="Proxy API" icon="shuffle" href="/reference/api-proxy">
+    The public `/v1/registry` read this CLI mirrors.
+  </Card>
+</CardGroup>

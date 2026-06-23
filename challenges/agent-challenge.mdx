@@ -43,6 +43,20 @@ The challenge supports SWE-Forge style repository-repair tasks and Terminal-Benc
 
 Each submitted agent or evaluation job selects at most 20 benchmark tasks, and at most 20 task evaluations run concurrently for that job. The aggregate score is the average across selected tasks. Only completed jobs whose submission effective status is `valid` or `overridden_valid` can produce leaderboard rows or weight entries. Submissions marked `suspicious`, `invalid`, or `error` are excluded from weights.
 
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Challenge integration" icon="diagram-project" href="/architecture/challenge-integration">
+    How challenges expose weights and routes to the subnet.
+  </Card>
+  <Card title="PRISM Challenge" icon="microscope" href="/challenges/prism">
+    The other primary challenge on BaseIntelligence.
+  </Card>
+  <Card title="All challenges" icon="trophy" href="/challenges/overview">
+    Every challenge running on the subnet.
+  </Card>
+</CardGroup>
+
 ## Source
 
 The challenge lives in its own repository: [`BaseIntelligence/agent-challenge`](https://github.com/BaseIntelligence/agent-challenge).

@@ -73,6 +73,17 @@ The generated CI workflow tests the challenge and pushes its Docker image to GHC
   The shared challenge-side helpers used by generated challenges.
 </Card>
 
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Challenge integration" icon="diagram-project" href="/architecture/challenge-integration">
+    How the master reads weights and routes traffic to a challenge.
+  </Card>
+  <Card title="Challenge CLI" icon="terminal" href="/reference/cli-challenge">
+    Full reference for `platform challenge` commands.
+  </Card>
+</CardGroup>
+
 ---
 
 Sources: `base/docs/challenges.md` (model, required API, create command), `base/docs/challenge-integration.md` (`get_weights`, database contract, storage), `base/src/platform_network/cli_app/main.py:857` (`challenge create`) and `:873` (`challenge register`), `base/src/platform_network/template_engine.py:13` (`ChallengeTemplateContext`) and `:62` (`render_challenge_template`).

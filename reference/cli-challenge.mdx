@@ -99,3 +99,17 @@ platform challenge restart my-challenge
 <Tip>
   The admin commands read the admin token from `security.admin_token` or `security.admin_token_file` (`base/src/platform_network/cli_app/main.py:77-80`). Set one of these before calling `register`, `activate`, `deactivate`, `pull`, or `restart`. See [Settings reference](/reference/settings).
 </Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Challenge integration" icon="diagram-project" href="/architecture/challenge-integration">
+    How a challenge plugs into the master and registry.
+  </Card>
+  <Card title="Create a challenge" icon="hammer" href="/challenges/creating">
+    The end-to-end guide to scaffolding and shipping a challenge.
+  </Card>
+  <Card title="Admin API" icon="lock" href="/reference/api-admin">
+    The admin routes these lifecycle commands call.
+  </Card>
+</CardGroup>

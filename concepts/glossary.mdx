@@ -23,7 +23,7 @@ A miner is a participant that produces work. A miner picks a [challenge](#challe
 
 ### Validator
 
-A validator is a participant that publishes the final scores on-chain. On BaseIntelligence a normal validator runs the submit-only on-chain submitter: it reads the master's final normalized vector and submits it to Bittensor. It runs no challenge orchestration.
+A validator is a participant that publishes the final scores on-chain. On BaseIntelligence a normal validator runs the submit-only on-chain submitter: it reads the master's final normalized vector and submits it to Bittensor. It runs no challenge orchestration. See [running a validator](/validators/overview).
 
 ### Weights
 
@@ -31,7 +31,7 @@ Weights are the scores assigned to miners. Each challenge computes raw per-[hotk
 
 ### Emissions
 
-Emissions describe how influence is split across challenges, and ultimately how tokens are distributed to participants. Each active challenge carries an emission share; the subnet normalizes those shares across active challenges before combining scores.
+Emissions describe how influence is split across challenges, and ultimately how tokens are distributed to participants. Each active challenge carries an emission share; the subnet normalizes those shares across active challenges before combining scores. See [the incentive mechanism](/concepts/incentive-mechanism).
 
 ### UID
 
@@ -47,7 +47,7 @@ A coldkey is the custody and ownership key. It holds funds and ownership and sta
 
 ### Epoch
 
-An epoch is the recurring interval on which the subnet recomputes and republishes weights. The master runs a weight epoch on a fixed interval (`epoch_interval_seconds`, default `360`), and the validator submitter polls and submits on its own interval. The on-chain submitter publishes the final vector at these boundaries.
+An epoch is the recurring interval on which the subnet recomputes and republishes weights. The master runs a weight epoch on a fixed interval (`epoch_interval_seconds`, default `360`), and the validator submitter polls and submits on its own interval. The on-chain submitter publishes the final vector at these boundaries. See the [weights pipeline](/architecture/weights-pipeline).
 
 ## Keep reading
 
