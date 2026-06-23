@@ -1,0 +1,99 @@
+---
+title: "Troubleshooting"
+description: "Diagnose and fix common validator failures using log lines and config."
+---
+
+Most validator issues show up as a specific log line or a skipped submission.
+Match the symptom below to its source and fix.
+
+## Weights submission is skipped
+
+The validator validates every fetched vector before submitting and logs the
+reason when it skips (`validator/normal_runner.py:80,93-107`).
+
+<Accordion title="Payload stale">
+  The vector is older than `weights_freshness_seconds` (default 720)
+  (`validator/normal_runner.py:99`, `src/platform_network/config/settings.py:48`).
+  Confirm the master is computing fresh vectors, and check clock skew between the
+  validator and master.
+</Accordion>
+
+<Accordion title="Payload expired">
+  The payload `expires_at` is in the past (`validator/normal_runner.py:97`).
+  Confirm the master is publishing current weights.
+</Accordion>
+
+<Accordion title="netuid mismatch">
+  The payload netuid does not match the configured netuid
+  (`validator/normal_runner.py:94-95`). Confirm `netuid: 100` in your config
+  (`config/validator.example.yaml:3`).
+</Accordion>
+
+<Accordion title="Empty or mismatched vectors">
+  The `uids` or `weights` vector is empty, or their lengths differ
+  (`validator/normal_runner.py:101-106`). This points at the master's computed
+  vector, not the validator.
+</Accordion>
+
+## Weights fetch failed
+
+A fetch failure is logged and the tick returns without submitting
+(`validator/normal_runner.py:74-76`). The client retries `weights_retries`
+times (default 3) with a `weights_timeout_seconds` timeout (default 15.0)
+before raising (`validator/weights_client.py:18-30`,
+`config/validator.example.yaml:20-21`). Confirm the validator can reach
+`resolved_weights_url` (`src/platform_network/config/settings.py:50-52`):
+
+```bash
+platform registry print --config config/validator.yaml
+```
+
+## Submission rejected by the subtensor
+
+A rejection is detected and logged, and the tick returns without raising
+(`validator/normal_runner.py:88-90`, `bittensor/weight_setter.py:7-18`).
+Confirm the hotkey is registered on netuid 100 and the wallet is staged
+correctly.
+
+## Submission is not configured
+
+If you see a warning that weights submission is not configured, the weights
+client, weight setter, or netuid is missing
+(`validator/normal_runner.py:64-71`). The runtime builds the submit wiring from
+the bittensor submit runtime
+(`src/platform_network/cli_app/main.py:838`,
+`src/platform_network/bittensor/factory.py:62-76`).
+
+## Bittensor is not installed
+
+If submission fails because bittensor is missing, install the extra
+(`src/platform_network/bittensor/factory.py:27-28`):
+
+```bash
+pip install 'platform-network[bittensor]'
+```
+
+## Cannot read the hotkey SS58 at startup
+
+The submitter warns when it cannot read the wallet hotkey SS58 at startup. Verify
+the wallet is staged at the expected path
+(`deploy/swarm/submitter/run_submitter.py:82-85`,
+`deploy/swarm/submitter/platform-submitter.service:13`).
+
+## Submitter and k3s validator both running
+
+Mutual exclusion is operational, not enforced in code. Scale the k3s validator to
+zero and wait one weights interval before starting the submitter unit. On
+rollback, stop the submitter first, then scale k3s back up
+(`deploy/swarm/submitter/platform-submitter.service:23-26`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Monitoring & logs" icon="chart-line" href="/validators/monitoring">
+    Find the log line behind a symptom.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/validators/configuration">
+    Check your config values.
+  </Card>
+</CardGroup>

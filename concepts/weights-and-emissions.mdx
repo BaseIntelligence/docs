@@ -1,0 +1,62 @@
+---
+title: "Weights and emissions"
+description: "How BaseIntelligence turns each challenge's raw scores into a single normalized weight vector for the chain."
+---
+
+[Weights](/concepts/glossary#weights) are the scores the subnet publishes to Bittensor. [Emissions](/concepts/glossary#emissions) are how the subnet splits influence across challenges. This page explains how raw challenge scores become one normalized vector.
+
+## The problem the aggregator solves
+
+Several [challenges](/concepts/glossary#challenge) run at once, each producing its own raw [hotkey](/concepts/glossary#hotkey) scores on its own scale. Bittensor expects a single vector indexed by [UID](/concepts/glossary#uid). The aggregator bridges the two.
+
+## Step 1: normalize each challenge's weights
+
+For one challenge, the raw `hotkey -> weight` map is cleaned and normalized. Non-finite values and values at or below zero are dropped, then the rest are scaled to sum to 1.
+
+```python
+def normalize_weights(raw: dict[str, float]) -> dict[str, float]:
+    cleaned = _clean_weights(raw)
+    total = sum(cleaned.values())
+    if total <= 0:
+        return {}
+    return {hotkey: value / total for hotkey, value in cleaned.items()}
+```
+
+## Step 2: normalize emissions across challenges
+
+Each active challenge carries an emission share (`emission_percent`). The aggregator clamps negatives to zero and normalizes the shares of active challenges so they sum to 1. If nothing is active, every share is zero.
+
+## Step 3: combine into a UID vector
+
+The aggregator walks every active challenge. For each one it multiplies that challenge's normalized emission share by each hotkey's normalized weight, and accumulates per hotkey:
+
+```python
+for hotkey, weight in normalize_weights(result.weights).items():
+    hotkey_scores[hotkey] += emission * weight
+```
+
+It then maps each hotkey to its Bittensor UID and sums per UID, with two rules:
+
+- A hotkey with no known UID is skipped.
+- UID `0` is skipped.
+
+Finally it normalizes the UID scores to sum to 1, ordered by UID. If the total is zero, it falls back to assigning all weight to UID `0`.
+
+<Tip>
+  The practical takeaway: your reward depends on both how well you score **within** a challenge and that challenge's **emission share**. A strong score in a small-share challenge contributes less than the same relative score in a large-share one.
+</Tip>
+
+## What gets published
+
+The aggregator emits a `FinalWeights` value with aligned `uids` and `weights` lists, plus the surviving per-hotkey weights. This is the vector the on-chain submitter reads from the master and submits to Bittensor at each [epoch](/concepts/glossary#epoch).
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Incentive mechanism" icon="coins" href="/concepts/incentive-mechanism">
+    Why the subnet is built to reward real work.
+  </Card>
+  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
+    See where aggregation sits in the full flow.
+  </Card>
+</CardGroup>

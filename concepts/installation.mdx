@@ -1,0 +1,81 @@
+---
+title: "Installation"
+description: "The high-level install paths for BaseIntelligence, from a local checkout to a validator submitter to a full subnet bring-up."
+---
+
+There is no single installer for everyone. What you install depends on what you want to do. This page maps the high-level paths; each role guide has the step-by-step detail.
+
+<Tip>
+  Not sure which path is yours? If you only want to publish weights on-chain, install the [submitter](#validator-the-submitter). If you are standing up the whole subnet, use the [full subnet](#operator-the-full-subnet) path. If you are developing or just exploring, start with the [local checkout](#developer-local-checkout).
+</Tip>
+
+## Choose your path
+
+<CardGroup cols={2}>
+  <Card title="Local checkout" icon="laptop-code" href="#developer-local-checkout">
+    Run the CLI and tests against the canonical repository.
+  </Card>
+  <Card title="Validator submitter" icon="scale-balanced" href="#validator-the-submitter">
+    Install the submit-only on-chain weight submitter.
+  </Card>
+  <Card title="Full subnet" icon="server" href="#operator-the-full-subnet">
+    Bring up the manager and workers on Docker Swarm.
+  </Card>
+  <Card title="Wallets first" icon="wallet" href="/concepts/wallets-and-registration">
+    Set up keys before any install that touches the chain.
+  </Card>
+</CardGroup>
+
+## Developer: local checkout
+
+For local development against the canonical `base` repository, install dependencies with [`uv`](https://docs.astral.sh/uv/) from the repository root:
+
+```bash
+uv sync --extra dev --extra master
+```
+
+The repository documents the full local check (lint, format, types, and tests) alongside this command. From here you can run the [CLI](/quickstart).
+
+## Validator: the submitter
+
+A normal [validator](/concepts/glossary#validator) installs only the submit-only on-chain submitter, a single systemd-managed process. It reads the master's latest weights and submits them on-chain; it runs no challenge orchestration and needs no database.
+
+The submitter ships three files that you copy into place, then enable as a systemd unit:
+
+<Steps>
+  <Step title="Copy the submitter files">
+    The submitter process, its credential-free config, and the systemd unit are copied to their destinations on the validator node.
+  </Step>
+  <Step title="Enable the service">
+    ```bash
+    systemctl daemon-reload
+    systemctl enable --now platform-submitter.service
+    ```
+  </Step>
+</Steps>
+
+The config carries the [netuid](/concepts/glossary#netuid) (100), the wallet identity, and the master weights URL. Full detail is in the [validator path](/validators/installation).
+
+## Operator: the full subnet
+
+Standing up the whole subnet is a Docker Swarm bring-up: a manager node for the control plane and challenge services, plus CPU/GPU worker nodes for short-lived evaluation jobs. The canonical entry point is the Swarm installer.
+
+The installer is **dry-run by default** and changes nothing until you pass `--apply`. Every destructive step sits behind its own explicit flag.
+
+```bash
+./deploy/swarm/install-swarm.sh           # dry-run: prints the planned docker commands, changes nothing
+./deploy/swarm/install-swarm.sh --apply   # apply on a host you own
+```
+
+The full end-to-end bring-up (image builds, volume provisioning, worker enrollment, and the on-chain submitter) is documented in the repository deploy guide and the [architecture path](/architecture/overview).
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Wallets & registration" icon="wallet" href="/concepts/wallets-and-registration">
+    The keys you need before participating.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run something now.
+  </Card>
+</CardGroup>

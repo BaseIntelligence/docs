@@ -1,0 +1,55 @@
+---
+title: "Incentive mechanism"
+description: "How BaseIntelligence ties rewards to verifiable work through per-challenge scoring and normalized emissions."
+---
+
+The incentive mechanism is the set of rules that decide who earns and how much. On BaseIntelligence, rewards follow verifiable work: a [challenge](/concepts/glossary#challenge) scores what a [miner](/concepts/glossary#miner) actually produced, and the subnet converts those scores into on-chain [weights](/concepts/glossary#weights).
+
+## The core idea
+
+Challenge scores are never submitted directly to Bittensor. Every score passes through the subnet, which applies a per-challenge [emission](/concepts/glossary#emissions) share and normalizes across all active challenges before anything reaches the chain. The flow is:
+
+1. The challenge evaluates miner work.
+2. The challenge exports raw [hotkey](/concepts/glossary#hotkey) weights.
+3. The subnet applies that challenge's emission share.
+4. The subnet normalizes across active challenge outputs.
+5. The subnet maps hotkeys to Bittensor [UIDs](/concepts/glossary#uid).
+6. [Validators](/concepts/glossary#validator) submit the final weights on-chain.
+
+## Two levers decide your reward
+
+<CardGroup cols={2}>
+  <Card title="Your score in the challenge" icon="chart-line">
+    Each challenge owns its scoring rubric. A higher relative score raises your share of that challenge's weight.
+  </Card>
+  <Card title="The challenge's emission share" icon="percent">
+    Each challenge carries a configured emission share. The same relative score is worth more in a larger-share challenge.
+  </Card>
+</CardGroup>
+
+The aggregator multiplies these together for every hotkey, sums per UID, and normalizes the result. See [weights and emissions](/concepts/weights-and-emissions) for the exact computation.
+
+## Why it is built this way
+
+- **Isolation.** Each challenge owns its scoring, so a flaw in one challenge does not corrupt another's rewards. If a challenge fails, the subnet can isolate its contribution.
+- **Verifiability.** Challenges are designed so the work is evaluated, not self-reported. PRISM, for example, re-executes a miner's training loop and computes the score itself rather than trusting miner-reported numbers.
+- **One vector.** Many separate scores collapse into a single normalized weight vector, which is what Bittensor expects per [subnet](/concepts/glossary#subnet).
+
+<Tip>
+  Practical advice for miners: pick a challenge whose scoring you can move, and aim for a strong **relative** score. Absolute numbers across challenges are not comparable because each rubric and emission share differs.
+</Tip>
+
+## Where weights go
+
+The on-chain submitter reads the master's final vector and submits it to Bittensor for [netuid](/concepts/glossary#netuid) 100 at each [epoch](/concepts/glossary#epoch). Rewards then follow Bittensor's own emission rules for the subnet.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Weights & emissions" icon="scale-balanced" href="/concepts/weights-and-emissions">
+    The math behind the final vector.
+  </Card>
+  <Card title="Challenges explained" icon="trophy" href="/concepts/challenges">
+    Pick where to compete.
+  </Card>
+</CardGroup>

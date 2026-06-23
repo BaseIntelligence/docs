@@ -1,0 +1,146 @@
+---
+title: "Troubleshooting"
+description: "Diagnose and fix upload errors: 401, 409, 413, and 502 responses from the proxy."
+icon: "wrench"
+---
+
+Most miner errors are signature, replay, size, or transport failures from the proxy. This
+page maps the status codes you will see to their cause and fix. Each status is raised by
+the proxy or the upload verifier in source.
+
+## Status code reference
+
+| Status | Meaning | Source |
+|--------|---------|--------|
+| `401` | Signature or identity failed (`MinerAuthError`) | `src/platform_network/master/app_proxy.py:442-443` |
+| `409` | Nonce already used (`NonceReplayError`) | `src/platform_network/master/app_proxy.py:440-441` |
+| `413` | Submission body too large | `src/platform_network/master/app_proxy.py:427-431` |
+| `502` | Challenge unavailable (transport failure) | `src/platform_network/master/app_proxy.py:475-478` |
+| `403` | Proxy path is not allowed | `src/platform_network/master/app_proxy.py:386-390` |
+
+## 401 Unauthorized
+
+A `401` means signature verification or identity resolution failed
+(`src/platform_network/master/app_proxy.py:442-443`). The specific message comes from the
+verifier:
+
+<Accordion title="missing <header>">
+One of `X-Hotkey`, `X-Signature`, `X-Nonce`, or `X-Timestamp` is absent
+(`src/platform_network/security/miner_auth.py:230-234`). Set all four headers
+(`src/platform_network/security/miner_auth.py:159-162`).
+</Accordion>
+
+<Accordion title="invalid timestamp">
+`X-Timestamp` is not an integer (`src/platform_network/security/miner_auth.py:163-166`).
+Send Unix seconds as an integer.
+</Accordion>
+
+<Accordion title="stale signature">
+The timestamp is more than `300` seconds from server time
+(`src/platform_network/security/miner_auth.py:168-169`,
+`src/platform_network/config/settings.py:33`). Re-sign with a current timestamp and resend
+promptly.
+</Accordion>
+
+<Accordion title="invalid signature">
+The signature does not verify against the canonical message
+(`src/platform_network/security/miner_auth.py:181-182`). Re-check the message fields and
+the body hash; the message is
+`platform-upload-v1:{netuid}:{slug}:{METHOD}:{path}:{hotkey}:{nonce}:{timestamp}:{body_hash}`
+(`src/platform_network/security/miner_auth.py:96-111`). See
+[Authentication & signing](/miners/authentication).
+</Accordion>
+
+<Accordion title="unknown hotkey">
+Your hotkey is not in the metagraph
+(`src/platform_network/security/miner_auth.py:213-215`). Register on netuid 100; see
+[Wallet & registration](/miners/wallet-registration).
+</Accordion>
+
+<Accordion title="blocked uid">
+Your hotkey resolves to UID `0`, which is blocked
+(`src/platform_network/security/miner_auth.py:143,217-218`).
+</Accordion>
+
+<Accordion title="metagraph unavailable">
+The metagraph could not be read while a registered hotkey is required
+(`src/platform_network/security/miner_auth.py:204-205,208-210`). Retry once the subnet
+metagraph is reachable again.
+</Accordion>
+
+## 409 Conflict (nonce replay)
+
+A `409` means the nonce was already used
+(`src/platform_network/master/app_proxy.py:440-441`,
+`src/platform_network/security/miner_auth.py:89-90`). Generate a fresh, unique nonce for
+every request. Nonces are retained for `86,400` seconds
+(`src/platform_network/config/settings.py:34`).
+
+<Tip>
+Do not retry a failed upload by replaying the same signed request. Always re-sign with a
+new nonce, or you will turn a transient error into a `409`
+(`src/platform_network/security/miner_auth.py:60-90`).
+</Tip>
+
+## 413 Request entity too large
+
+A `413` means the body exceeded the upload limit
+(`src/platform_network/master/app_proxy.py:427-431`). The maximum is `7,500,000` bytes
+(`src/platform_network/config/settings.py:35`). Shrink the artifact below the limit.
+
+## 502 Bad gateway (Agent Challenge)
+
+A `502` under `/challenges/agent-challenge/...` is a safe unavailable state from proxy
+transport handling, not a challenge rejection (`docs/miner/README.md:101-103`). Work the
+checklist (`docs/miner/README.md:105-112`):
+
+<Steps>
+  <Step title="Confirm ingress routes /challenges">
+    A route for `/v1/challenges` alone is not enough; `/challenges` must route to the proxy
+    (`docs/miner/README.md:107`).
+  </Step>
+  <Step title="Confirm proxy slug routing">
+    The proxy must point at the Agent Challenge service and still block `/internal/*`,
+    `/health`, and `/version` (`docs/miner/README.md:108`).
+  </Step>
+  <Step title="Confirm challenge health">
+    Check Agent Challenge health, a running Swarm task, service DNS on the overlay, and the
+    service port (`docs/miner/README.md:109`).
+  </Step>
+  <Step title="Confirm placement">
+    The challenge service must run on the manager node and not be stuck pending placement
+    (`docs/miner/README.md:110`).
+  </Step>
+  <Step title="Separate transport from origin errors">
+    Transport failures become safe `502` responses; challenge-origin non-2xx responses pass
+    through as auth, replay, rate-limit, or validation errors
+    (`docs/miner/README.md:111`).
+  </Step>
+</Steps>
+
+<Tip>
+If the failing request is an env action, confirm it uses the signed env routes and includes
+only the four signed miner header names
+(`docs/miner/README.md:112`, `docs/miner/README.md:90-95`). See
+[Submitting your work](/miners/submitting).
+</Tip>
+
+## 403 Forbidden (blocked path)
+
+A `403` means the path targets a private challenge route
+(`src/platform_network/master/app_proxy.py:386-390`). The proxy blocks `/internal/*`,
+`/health`, `/version`, and benchmark-execution paths on challenge routes
+(`src/platform_network/master/app_proxy.py:73-74,90-110`). Use only the public submission,
+status, and leaderboard routes.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication & signing" icon="signature" href="/miners/authentication">
+    Rebuild a valid signature.
+  </Card>
+  <Card title="Monitoring & logs" icon="chart-line" href="/miners/monitoring">
+    Confirm status after a fix.
+  </Card>
+</CardGroup>
+</content>

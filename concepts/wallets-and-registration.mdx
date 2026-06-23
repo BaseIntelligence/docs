@@ -1,0 +1,56 @@
+---
+title: "Wallets and registration"
+description: "The keys you need to participate on BaseIntelligence, how hotkeys and coldkeys differ, and where registration fits."
+---
+
+Before you participate on BaseIntelligence for real, you need a Bittensor wallet and a slot on the subnet. This page explains the two keys, the registration step, and the safety rules that matter most.
+
+## Two keys, two jobs
+
+A Bittensor wallet has two keys with very different roles:
+
+- **[Coldkey](/concepts/glossary#coldkey)** — your custody and ownership key. It holds funds and ownership. Keep it offline and off operational nodes.
+- **[Hotkey](/concepts/glossary#hotkey)** — your operational signing key. Miners sign submissions with it; validators submit weights with it.
+
+<Tip>
+  The single most important safety rule: never place coldkey material on an operational node, in shell history, in logs, in screenshots, or in evidence files. Generate keys on a trusted machine and copy only the hotkey to the node that needs it.
+</Tip>
+
+## Generating wallets
+
+Wallet creation and on-chain registration use Bittensor's own tooling. See the [Bittensor documentation](https://docs.bittensor.com/) for creating a coldkey and hotkey and for registering on a subnet. Registration places your [hotkey](/concepts/glossary#hotkey) into a [UID](/concepts/glossary#uid) slot on the subnet.
+
+When you register, the subnet is **[netuid](/concepts/glossary#netuid) 100**.
+
+## Pointing your wallet at the subnet
+
+The canonical configuration identifies the wallet with a name, a hotkey, and an optional wallet path. The defaults are:
+
+```yaml
+network:
+  netuid: 100
+  wallet_name: default
+  wallet_hotkey: default
+  wallet_path: null
+```
+
+A validator submitter sets these to its own identity (for example a dedicated wallet name and a `validator` hotkey) and reads the validator hotkey from the node's wallet path.
+
+## Where the validator hotkey lives
+
+The submit-only validator process needs exactly one secret: the validator hotkey file. Copy only the hotkey (not the coldkey) onto the node. The submitter expects the hotkey under the validator wallet's `hotkeys/` directory on the configured wallet path.
+
+## If running a validator is too heavy
+
+If the validator infrastructure requirements are too high, you do not have to run the submitter yourself. Operators can use the Bittensor CHK / stake weight check flow to give validator power to the recommended subnet validator hotkey instead. See [miners and validators](/concepts/miners-and-validators).
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/concepts/installation">
+    Install the role that matches your keys.
+  </Card>
+  <Card title="Miners & validators" icon="users" href="/concepts/miners-and-validators">
+    What each role does with its hotkey.
+  </Card>
+</CardGroup>

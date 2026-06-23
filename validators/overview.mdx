@@ -1,0 +1,79 @@
+---
+title: "Validating on BaseIntelligence"
+description: "What a validator does on the BaseIntelligence subnet and how the pieces fit together."
+---
+
+A validator scores miners and sets weights on the BaseIntelligence subnet
+(netuid **100**, `src/platform_network/config/settings.py:12`). It does not
+score work in isolation. The master computes the final weight vector from each
+challenge, and the validator's job is to fetch that vector and submit it
+on-chain with its hotkey.
+
+## What a validator runs
+
+The `platform validator run` command starts two concurrent loops
+(`src/platform_network/cli_app/main.py:821-831`):
+
+<CardGroup cols={2}>
+  <Card title="Registry reconcile loop" icon="arrows-rotate">
+    Fetches the challenge registry and starts the active challenge containers.
+    See `validator/normal_runner.py:45-62`.
+  </Card>
+  <Card title="Weight submit loop" icon="scale-balanced">
+    Fetches the master's latest weight vector and submits it on-chain every
+    `weights_interval_seconds`. See `validator/normal_runner.py:64-91`.
+  </Card>
+</CardGroup>
+
+## How weights flow
+
+1. The master computes the final UID weight vector per epoch
+   (`src/platform_network/cli_app/main.py:784-818`).
+2. The validator fetches that vector over HTTP from
+   `GET /v1/weights/latest` (`validator/weights_client.py:18-30`).
+3. The validator validates freshness and shape, then calls `set_weights`
+   on-chain (`validator/normal_runner.py:64-107`,
+   `bittensor/weight_setter.py:27-44`).
+
+Read [Weight setting](/validators/weight-setting) for the cadence and the
+validation rules.
+
+## Two ways to validate
+
+<Tabs>
+  <Tab title="Run the full stack">
+    Run `platform validator run` to reconcile challenges and submit weights from
+    one process (`src/platform_network/cli_app/main.py:834-854`). Start at the
+    [Quickstart](/validators/quickstart).
+  </Tab>
+  <Tab title="Delegate validation power">
+    If the infrastructure requirements are too high, you can use Bittensor CHK /
+    stake-weight check to give validation power to the recommended validator
+    hotkey instead of running the stack yourself
+    (`config/validator.example.yaml:10-13`).
+  </Tab>
+</Tabs>
+
+## Identity and keys
+
+The validator signs with its **hotkey**; ownership stays with the **coldkey**.
+The wallet defaults are `wallet_name: default` and `wallet_hotkey: default`
+(`config/validator.example.yaml:5-6`), and `master_uid` defaults to `0`
+(`config/validator.example.yaml:8`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/validators/quickstart">
+    Get a validator submitting weights fast.
+  </Card>
+  <Card title="Install the validator" icon="download" href="/validators/installation">
+    Install the package and its bittensor extra.
+  </Card>
+  <Card title="Running a validator" icon="play" href="/validators/running">
+    Start the runtime and keep it healthy.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/validators/configuration">
+    Every validator setting and its default.
+  </Card>
+</CardGroup>

@@ -1,0 +1,170 @@
+---
+title: "Security model"
+description: "Trust boundaries, isolation rules, authentication and signing, secret handling, and the Swarm runtime boundary that keep challenges and the control plane apart."
+icon: "lock"
+---
+
+The subnet's security model is built on **isolation**: challenges are sandboxed from
+the control plane and from each other, the control-plane database is private to the
+master, and all privileged surfaces are token-gated, signed, or explicitly fenced.
+
+_Source: `docs/security.md:5-14`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The security model, isolation rules, and the auth/signing primitives.
+</Card>
+
+## Isolation rules
+
+- The shared control-plane PostgreSQL is available only to the master or validator
+  control-plane process that owns the deployment; its URL comes from
+  `PLATFORM_DATABASE_URL` or a Docker secret.
+- Challenges never receive master, validator, or central control-plane PostgreSQL
+  credentials.
+- Each challenge gets only its own SQLite database on its `/data` Swarm volume.
+- The submitter never receives master DB credentials.
+- Internal challenge calls require per-challenge shared tokens.
+- The public proxy strips sensitive headers and blocks internal challenge paths.
+
+_Source: `docs/security.md:7-14`._
+
+## Authentication and signing
+
+There are two distinct auth models on the public API, plus internal tokens used only
+between the master and its containers.
+
+### Miner request signing
+
+Signed miner actions preserve only four headers — `X-Hotkey`, `X-Signature`,
+`X-Nonce`, and `X-Timestamp` — which are verified against a canonical message before
+the request is bridged to the challenge.
+
+_Source: `docs/security.md:14`; `src/platform_network/security/miner_auth.py:159-162`, `src/platform_network/security/miner_auth.py:96-111`._
+
+### Admin token
+
+Management routes depend on `require_admin`, which accepts the token in an
+`X-Admin-Token` header or as an `Authorization: Bearer` credential and compares it in
+constant time. The expected token is loaded from `ADMIN_TOKEN` or the file named by
+`ADMIN_TOKEN_FILE`.
+
+_Source: `src/platform_network/master/app_admin.py:121-130`; `src/platform_network/master/admin/auth.py:10-18`, `src/platform_network/master/admin/auth.py:28-29`._
+
+### Per-challenge tokens
+
+Internal challenge calls — including the master's weight collection — require a
+per-challenge shared token. Public challenge routes are proxied without exposing the
+internal control routes.
+
+_Source: `docs/security.md:11`; `docs/architecture.md:57-59`._
+
+### Validator trust
+
+Validators run only the submit-only on-chain submitter; it reads the public
+`/v1/weights/latest` and needs no control-plane database credential. The submitter
+logs only the **public** hotkey SS58 address, never the private key.
+
+_Source: `docs/security.md:10`; `deploy/swarm/submitter/run_submitter.py:30-33`, `deploy/swarm/submitter/run_submitter.py:65-86`._
+
+## Production policy boundaries
+
+The production boundary is stricter than local development:
+
+- Dev/test/local runs may use SQLite for master state, but production control-plane
+  state must use PostgreSQL from a Docker secret or an explicit `PLATFORM_DATABASE_URL`;
+  SQLite is rejected for control-plane state.
+- Challenge runtime state is always SQLite on the challenge `/data` Swarm volume.
+- Production images must include a tag and a `sha256` digest; untagged references and
+  missing digests are rejected.
+
+_Source: `docs/security.md:18-23`._
+
+## Swarm runtime boundary
+
+Challenge services run on the manager node (`node.role==manager`); broker-dispatched
+evaluation jobs run on worker nodes constrained by `node.labels.platform.workload`.
+Broker-created challenge jobs must not receive the host Docker socket — the default
+socket-grant allowlist is empty.
+
+_Source: `docs/security.md:27`; `src/platform_network/config/settings.py:74-82`._
+
+Network isolation uses encrypted overlay networks created with MTU 1450. A job
+requesting `network: none` is attached to a dedicated internal (no external routes)
+encrypted overlay, because Swarm services cannot attach to the predefined `none`
+network.
+
+_Source: `docs/security.md:29`._
+
+### Privileged escape hatch
+
+A Swarm service cannot run `--privileged` or `--gpus`, so `docker service create`
+never emits them. A challenge that legitimately needs a privileged Docker-in-Docker
+job uses the capability-gated escape hatch: the broker runs the job as a direct local
+`docker run` on a worker node. The escape hatch is the only path that grants
+privilege, it is gated per challenge, and the container owns its own
+`/var/lib/docker` volume rather than the host Docker socket.
+
+_Source: `docs/security.md:33-35`; `src/platform_network/config/settings.py:70-73`._
+
+## Secrets
+
+Admin tokens, challenge tokens, the control-plane database URL, registry
+credentials, and wallet material must come from files, environment variables, or
+Docker secrets. Swarm secrets are mounted inside containers at
+`/run/secrets/platform/<name>`, and value-bearing secrets reach `docker secret create`
+via stdin, never as argv.
+
+_Source: `docs/security.md:49`._
+
+The control-plane database credential is written only into a Docker secret and must
+not be printed in logs, service definitions, or evidence. Challenge services receive
+only per-challenge runtime secrets.
+
+_Source: `docs/security.md:31`._
+
+Miner env values submitted to the Agent Challenge are per-submission secrets owned by
+the challenge, encrypted at rest, and cannot be retrieved after submission. The proxy
+forwards the request body but must not parse, persist, or log submitted env values.
+
+_Source: `docs/security.md:51`._
+
+## Broker archive and cleanup security
+
+Broker archive uploads are treated as untrusted input: the Swarm broker path rejects
+absolute paths, parent traversal, links, and device members before extraction, and
+malformed images are rejected before any service is created.
+
+_Source: `docs/security.md:41-43`._
+
+Cleanup is two-layered. The broker `/v1/docker/cleanup` path removes the Swarm
+service and releases the workload and GPU ledger entries on success and failure; the
+manager-only supervisor timeout-reaper independently reaps jobs that exceed their
+timeout, so a crashed challenge cannot leak long-running services.
+
+_Source: `docs/security.md:45`._
+
+## Failure behavior
+
+If a challenge fails health checks or `get_weights`, its contribution is zero for
+that epoch; the master does not auto-disable it. For public challenge requests,
+transport failures at ingress, proxy, or challenge discovery become safe `502`
+responses.
+
+_Source: `docs/security.md:55-57`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    Job dispatch, the GPU contract, and archive validation.
+  </Card>
+  <Card title="Database and registry" icon="database" href="/architecture/database">
+    Control-plane PostgreSQL versus per-challenge SQLite.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`). Paths prefixed with
+`src/platform_network/` are the internal Python package.

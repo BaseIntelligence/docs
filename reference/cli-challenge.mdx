@@ -1,0 +1,101 @@
+---
+title: "Challenge CLI"
+description: "platform challenge commands: scaffold a new challenge repo and register, activate, pull, or restart challenges on the master."
+icon: "puzzle-piece"
+---
+
+The `platform challenge` group scaffolds new challenges and manages their lifecycle on a running master. Its group help is `Manage and scaffold challenges` (`base/src/platform_network/cli_app/main.py:61`).
+
+There are two kinds of command here:
+
+- **`create`** runs locally and only writes files — no master required.
+- **`register`, `activate`, `deactivate`, `pull`, `restart`** call the master admin API and require a configured admin token.
+
+## platform challenge create
+
+Scaffolds a new challenge repository from the built-in template (`base/src/platform_network/cli_app/main.py:857-870`).
+
+| Argument / Option | Required | Default | Source |
+|-------------------|----------|---------|--------|
+| `slug` | yes | — | `base/src/platform_network/cli_app/main.py:859` |
+| `--out` | yes | — (destination challenge repo path) | `base/src/platform_network/cli_app/main.py:860` |
+| `name` | no | derived from slug | `base/src/platform_network/cli_app/main.py:861` |
+| `image` | no | none | `base/src/platform_network/cli_app/main.py:862` |
+| `version` | no | `0.1.0` | `base/src/platform_network/cli_app/main.py:863` |
+| `overwrite` | no | `False` | `base/src/platform_network/cli_app/main.py:864` |
+
+```bash
+platform challenge create my-challenge --out ./my-challenge
+```
+
+## Admin lifecycle commands
+
+Each of these posts to the master admin API at `master.registry_url` with an `X-Admin-Token` header (`base/src/platform_network/cli_app/main.py:99-100`). They share the `--config` option, defaulting to `config/master.example.yaml`.
+
+<Accordion title="platform challenge register — register a challenge record">
+
+Creates a challenge record on the master via `POST /v1/admin/challenges` (`base/src/platform_network/cli_app/main.py:881-891`). The record `version` is taken from the image tag, or `latest` when the image has no tag (`base/src/platform_network/cli_app/main.py:888`).
+
+| Argument / Option | Required | Default | Source |
+|-------------------|----------|---------|--------|
+| `slug` | yes | — | `base/src/platform_network/cli_app/main.py:875` |
+| `image` | yes | — | `base/src/platform_network/cli_app/main.py:876` |
+| `emission` | yes | — (float) | `base/src/platform_network/cli_app/main.py:877` |
+| `name` | no | slug | `base/src/platform_network/cli_app/main.py:878` |
+| `--config` | no | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:879` |
+
+```bash
+platform challenge register my-challenge ghcr.io/<org>/my-challenge:1.0.0 15
+```
+
+</Accordion>
+
+<Accordion title="platform challenge activate / deactivate">
+
+Toggle a registered challenge on or off. `activate` posts `/v1/admin/challenges/{slug}/activate` (`base/src/platform_network/cli_app/main.py:894-898`); `deactivate` posts `/v1/admin/challenges/{slug}/deactivate` (`base/src/platform_network/cli_app/main.py:901-905`).
+
+| Argument / Option | Required | Default | Source |
+|-------------------|----------|---------|--------|
+| `slug` | yes | — | `base/src/platform_network/cli_app/main.py:896`, `:903` |
+| `--config` | no | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:896`, `:903` |
+
+```bash
+platform challenge activate my-challenge
+platform challenge deactivate my-challenge
+```
+
+</Accordion>
+
+<Accordion title="platform challenge pull — re-pull the challenge image">
+
+Triggers the master to pull the challenge's image via `POST /v1/admin/challenges/{slug}/pull` (`base/src/platform_network/cli_app/main.py:908-912`).
+
+| Argument / Option | Required | Default | Source |
+|-------------------|----------|---------|--------|
+| `slug` | yes | — | `base/src/platform_network/cli_app/main.py:910` |
+| `--config` | no | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:910` |
+
+```bash
+platform challenge pull my-challenge
+```
+
+</Accordion>
+
+<Accordion title="platform challenge restart — restart a running challenge">
+
+Restarts the challenge runtime via `POST /v1/admin/challenges/{slug}/restart` (`base/src/platform_network/cli_app/main.py:915-919`).
+
+| Argument / Option | Required | Default | Source |
+|-------------------|----------|---------|--------|
+| `slug` | yes | — | `base/src/platform_network/cli_app/main.py:917` |
+| `--config` | no | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:917` |
+
+```bash
+platform challenge restart my-challenge
+```
+
+</Accordion>
+
+<Tip>
+  The admin commands read the admin token from `security.admin_token` or `security.admin_token_file` (`base/src/platform_network/cli_app/main.py:77-80`). Set one of these before calling `register`, `activate`, `deactivate`, `pull`, or `restart`. See [Settings reference](/reference/settings).
+</Tip>

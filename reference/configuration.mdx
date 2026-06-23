@@ -1,0 +1,76 @@
+---
+title: "Configuration"
+description: "How Platform loads configuration: YAML files, environment overrides, settings sections, and the production policy."
+icon: "gear"
+---
+
+Every `platform` command loads its configuration the same way: read a YAML file, overlay environment variables, then validate the result against the settings model and production policy (`base/src/platform_network/config/loader.py:37-47`).
+
+## Load order and precedence
+
+`load_settings(path)` builds the configuration in three steps (`base/src/platform_network/config/loader.py:37-47`):
+
+<Steps>
+  <Step title="Read the YAML file">
+    The file at `--config` is parsed as YAML and must contain a mapping; a missing file raises `FileNotFoundError` and a non-mapping raises `ValueError` (`base/src/platform_network/config/loader.py:39-46`).
+  </Step>
+  <Step title="Overlay environment variables">
+    Any `PLATFORM_`-prefixed environment variable is applied on top of the file values (`base/src/platform_network/config/loader.py:28-34`).
+  </Step>
+  <Step title="Validate">
+    The merged data is validated into the `Settings` model, which also runs the production policy (`base/src/platform_network/config/loader.py:47`, `base/src/platform_network/config/settings.py:128-131`).
+  </Step>
+</Steps>
+
+Because environment variables are applied after the file is read, **environment variables override file values** (`base/src/platform_network/config/loader.py:46-47`).
+
+## Environment variable overrides
+
+Environment overrides use the `PLATFORM_` prefix and map nested settings with a double underscore (`__`) separator. The remainder of the key is lowercased and split into a nested path (`base/src/platform_network/config/loader.py:28-33`).
+
+| Setting | Environment variable |
+|---------|----------------------|
+| `master.proxy_port` | `PLATFORM_MASTER__PROXY_PORT` |
+| `database.url` | `PLATFORM_DATABASE__URL` |
+| `validator.registry_url` | `PLATFORM_VALIDATOR__REGISTRY_URL` |
+
+Values that begin with `[` or `{` are parsed as YAML, so lists and mappings can be supplied inline (`base/src/platform_network/config/loader.py:12-18`):
+
+```bash
+export PLATFORM_MASTER__PROXY_PORT=9000
+export PLATFORM_MASTER__UPLOAD_EXTRA_REGISTERED_HOTKEYS='["5Fh...","5Gd..."]'
+```
+
+## Settings sections
+
+The top-level `Settings` model groups configuration into sections (`base/src/platform_network/config/settings.py:118-126`):
+
+| Section | Purpose | Source |
+|---------|---------|--------|
+| `environment` | Deployment environment; drives production policy. Defaults to `development`. | `base/src/platform_network/config/settings.py:119` |
+| `network` | Chain, wallet, and subnet identity. | `base/src/platform_network/config/settings.py:120` |
+| `master` | Master proxy, epoch, registry, and upload settings. | `base/src/platform_network/config/settings.py:121` |
+| `validator` | Validator registry and weights settings. | `base/src/platform_network/config/settings.py:122` |
+| `database` | Database connection URL. | `base/src/platform_network/config/settings.py:123` |
+| `docker` | Swarm broker, networking, and job placement. | `base/src/platform_network/config/settings.py:124` |
+| `security` | Admin token source. | `base/src/platform_network/config/settings.py:125` |
+| `observability` | Logging, Sentry, and OpenTelemetry. | `base/src/platform_network/config/settings.py:126` |
+
+See the [Settings reference](/reference/settings) for every key, type, and default.
+
+## Production policy
+
+When `environment` is `prod`, `production`, or `staging`, a stricter policy is enforced at load time (`base/src/platform_network/config/policy.py:6`, `:30-35`). The policy runs automatically through the settings validator on every load (`base/src/platform_network/config/settings.py:128-131`), raising `ProductionPolicyError` on any violation (`base/src/platform_network/config/policy.py:26-27`).
+
+| Rule | Requirement | Source |
+|------|-------------|--------|
+| Database | Must be an external PostgreSQL URL; `sqlite` is rejected. | `base/src/platform_network/config/policy.py:42-50` |
+| Image allowlist | Prefixes must include a registry with a dot and a namespace; broad roots and wildcards are rejected. | `base/src/platform_network/config/policy.py:53-67` |
+| Image references | Must include a tag (semver or `latest`) **and** a `sha256:` digest. | `base/src/platform_network/config/policy.py:70-85` |
+| TLS | `verify_tls` may not be set to `false`. | `base/src/platform_network/config/policy.py:88-94` |
+
+In non-production environments these checks are skipped — each validator returns early when `production` is false (`base/src/platform_network/config/policy.py:43-44`, `:54-55`, `:71-72`).
+
+<Tip>
+  Set `environment: production` only once your database is PostgreSQL and your image allowlist uses fully-qualified registry prefixes (for example `ghcr.io/<org>/`). Otherwise the command fails fast at startup (`base/src/platform_network/config/policy.py:97-102`).
+</Tip>

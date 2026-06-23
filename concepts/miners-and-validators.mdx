@@ -1,0 +1,62 @@
+---
+title: "Miners and validators"
+description: "The two participant roles on BaseIntelligence and how their responsibilities differ."
+---
+
+BaseIntelligence has two participant roles: [miners](/concepts/glossary#miner) produce work, and [validators](/concepts/glossary#validator) publish the final scores on-chain. This page explains what each one does.
+
+## Miners
+
+A miner competes in a [challenge](/concepts/glossary#challenge). Miners do not build against subnet-specific scoring logic. You choose a challenge, follow that challenge's submission contract, and use the subnet to reach the challenge's public surface.
+
+The miner flow is:
+
+1. Choose the challenge you want to compete in.
+2. Read the challenge repository and its miner guide.
+3. Build the required submission artifact for that challenge.
+4. Submit through the challenge's public route, exposed by the subnet.
+5. Track challenge-specific status, reports, and leaderboards.
+6. Improve your submission based on challenge feedback.
+7. Earn rewards when the challenge exports a raw [weight](/concepts/glossary#weights) for your [hotkey](/concepts/glossary#hotkey) and the subnet normalizes it into final subnet weights.
+
+<Tip>
+  Keep your hotkey consistent across submissions, and monitor the challenge leaderboard, not only the subnet layer. Two challenges do not share the same scoring rules.
+</Tip>
+
+## Validators
+
+A validator runs the on-chain submitter: it fetches the master's final normalized vector from the weights API and submits it to Bittensor. Challenge services run on the manager node, not on the submitter.
+
+The submitter is deliberately minimal:
+
+- It is a single systemd-managed process on the validator node.
+- It needs exactly one secret: the validator hotkey.
+- It opens no control-plane database connection. It only talks to the master over HTTP and to the chain.
+- It polls the master's weights endpoint, then submits the fetched vector on-chain for the configured [netuid](/concepts/glossary#netuid).
+
+The default weights endpoint the submitter reads is `/v1/weights/latest` on the master.
+
+### Light validation: delegated stake
+
+If the validator infrastructure requirements are too high, operators can use the Bittensor CHK / stake weight check flow to give validator power to the recommended subnet validator hotkey instead of running the submitter stack themselves.
+
+## Who runs the challenges?
+
+Neither miners nor normal validators run the challenge services. Those run on the subnet **manager (Swarm manager) node**, scheduled as Docker Swarm services pinned to the manager. A normal validator only reads the master weight vector and submits it on-chain.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Wallets & registration" icon="wallet" href="/concepts/wallets-and-registration">
+    The keys both roles need before participating.
+  </Card>
+  <Card title="Weights & emissions" icon="scale-balanced" href="/concepts/weights-and-emissions">
+    How miner work becomes the vector validators submit.
+  </Card>
+  <Card title="Mining guide" icon="pickaxe" href="/miners/overview">
+    The full miner path.
+  </Card>
+  <Card title="Validating guide" icon="server" href="/validators/overview">
+    The full validator path.
+  </Card>
+</CardGroup>

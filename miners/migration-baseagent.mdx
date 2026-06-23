@@ -1,0 +1,84 @@
+---
+title: "Migrating from BaseAgent"
+description: "Move from the standalone BaseAgent project to the canonical BASE mining flow on netuid 100."
+icon: "arrow-right-arrow-left"
+---
+
+BaseAgent is the high-performance autonomous agent implementation for the challenge
+(`README.md:1-5` in the baseagent project). BASE is the subnet itself: registration,
+the signed upload protocol, and the proxy that routes submissions to challenges. If you
+have been running BaseAgent on its own, this page is the hard cut to the canonical mining
+flow documented here.
+
+<Tip>
+The BaseAgent README links out to an external core repository and an external mining
+documentation page (`README.md:15-16` in the baseagent project). Those external links are
+not the canonical source. This BASE documentation set is the canonical reference for
+mining on netuid 100.
+</Tip>
+
+## What stays the same
+
+Your agent code and runtime contract do not change:
+
+- **Entrypoint.** A submitted ZIP still imports `agent:Agent` from the root `agent.py`
+  file (`README.md:104` in the baseagent project).
+- **DeepSeek-only runtime.** Challenge runs use only the DeepSeek API. Set
+  `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL` (`https://api.deepseek.com`), and `LLM_MODEL`
+  (`deepseek-v4-pro`) (`README.md:96-98` in the baseagent project). Do not add Chutes,
+  OpenRouter, Anthropic, or OpenAI fallbacks for challenge execution
+  (`README.md:79,106` in the baseagent project).
+
+## What changes
+
+| Concern | BaseAgent standalone | Canonical BASE flow |
+|---------|----------------------|---------------------|
+| Install | `pip install .` or `pip install -r requirements.txt` (`README.md:85-91` in the baseagent project) | `uv sync --extra dev --extra master` (`README.md:212`) |
+| Submission | Local `python agent.py --instruction ...` runs (`README.md:95-100` in the baseagent project) | Signed upload to the proxy (`docs/miner/README.md:56-60`) |
+| Identity | Local only | Hotkey registered on netuid 100 (`src/platform_network/config/settings.py:12`) |
+| Routing | N/A | Proxy resolves the challenge slug (`src/platform_network/master/app_proxy.py:385-413`) |
+
+## Migration steps
+
+<Steps>
+  <Step title="Install the BASE tooling">
+    Install BASE with `uv sync --extra dev --extra master` (`README.md:212`). This provides
+    the `platform` CLI (`pyproject.toml:43`). See [Installation](/miners/installation).
+  </Step>
+  <Step title="Register your hotkey on netuid 100">
+    Mining requires a hotkey registered on netuid `100`
+    (`src/platform_network/config/settings.py:12`). See
+    [Wallet & registration](/miners/wallet-registration).
+  </Step>
+  <Step title="Keep your agent.py entrypoint">
+    Confirm your ZIP exposes `agent:Agent` from the root `agent.py`
+    (`README.md:104` in the baseagent project).
+  </Step>
+  <Step title="Package and sign the upload">
+    Build the canonical signing message and set the four headers, then upload to the
+    Agent Challenge submission route (`src/platform_network/security/miner_auth.py:96-111`,
+    `docs/miner/README.md:56-60`). See [Authentication & signing](/miners/authentication)
+    and [Submitting your work](/miners/submitting).
+  </Step>
+  <Step title="Verify through the proxy">
+    Check status and the leaderboard through the proxy
+    (`src/platform_network/master/app_proxy.py:514-518`, `docs/miner/README.md:50,62`). See
+    [Monitoring & logs](/miners/monitoring).
+  </Step>
+</Steps>
+
+## After migration
+
+Once you submit through the signed proxy upload, your work is scored by the challenge and
+the subnet normalizes the exported weight (`docs/miner/README.md:137-149`). From here, the
+canonical flow is the same as any miner on netuid 100.
+
+<CardGroup cols={2}>
+  <Card title="Choose a challenge" icon="list-check" href="/miners/choose-a-challenge">
+    Pick the challenge to mine.
+  </Card>
+  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
+    Run the canonical upload protocol.
+  </Card>
+</CardGroup>
+</content>

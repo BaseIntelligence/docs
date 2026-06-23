@@ -1,0 +1,117 @@
+---
+title: "Miner quickstart"
+description: "Go from a fresh wallet to a signed submission on netuid 100 in a few steps."
+icon: "rocket"
+---
+
+This quickstart takes you from zero to a signed submission. Miners do not run a dedicated
+miner binary. You register a hotkey on the subnet, build the artifact your chosen
+challenge requires, then submit it as a **signed HTTP request through the subnet proxy**
+(`docs/miner/README.md:9-18`, `src/platform_network/master/app_proxy.py:510-518`).
+
+## Prerequisites
+
+- Python `>=3.12` for the subnet tooling (`pyproject.toml:5`).
+- A Bittensor wallet with a coldkey and a hotkey (`src/platform_network/config/settings.py:14-15`).
+- Your hotkey registered on **netuid 100** (`src/platform_network/config/settings.py:12`).
+
+<Tip>
+There is no `miner` subcommand in the subnet CLI. The CLI exposes `master`, `validator`,
+`challenge`, `db`, `registry`, and `worker` groups only
+(`src/platform_network/cli_app/main.py:57-71`). Your submission path is the signed upload
+protocol, not a CLI command.
+</Tip>
+
+## Steps
+
+<Steps>
+  <Step title="Install the tooling">
+    Install the subnet package and the Bittensor extra. From the `base` repository root:
+
+    ```bash
+    uv sync --extra dev --extra master
+    ```
+
+    This is the canonical install command (`README.md:212`). See
+    [Install the miner](/miners/installation) for the full setup.
+  </Step>
+  <Step title="Create and register a hotkey">
+    Create a wallet, then register the hotkey on netuid 100. The default wallet name and
+    hotkey name are both `default` (`src/platform_network/config/settings.py:14-15`,
+    `config/master.example.yaml:5-6`). See
+    [Wallet & registration](/miners/wallet-registration) for the registration walkthrough.
+  </Step>
+  <Step title="Choose a challenge">
+    Pick a challenge slug. The active primary challenges are `agent-challenge` and `prism`
+    (`src/platform_network/cli_app/main.py:267-268`,
+    `src/platform_network/cli_app/main.py:292-293`). Discover what is live with the
+    registry read on the proxy:
+
+    ```bash
+    curl -sf "$PROXY_URL/v1/registry"
+    ```
+
+    `/v1/registry` is served by the proxy (`README.md:425`). See
+    [Choosing a challenge](/miners/choose-a-challenge).
+  </Step>
+  <Step title="Build your submission artifact">
+    Build the artifact in your challenge's required format. PRISM takes a two-script
+    `.zip` bundle (`architecture.py` plus `training.py`,
+    `src/platform_network/cli_app/main.py:458`). Agent Challenge takes an agent ZIP whose
+    root `agent.py` exposes `agent:Agent` (`baseagent README.md:104` in the baseagent
+    repository). See [Choosing a challenge](/miners/choose-a-challenge).
+  </Step>
+  <Step title="Sign and submit">
+    Sign the request with your hotkey and upload through the proxy. For a raw ZIP bridge
+    upload (`src/platform_network/master/app_proxy.py:510-512`,
+    `docs/miner/README.md:53-60`):
+
+    ```http
+    POST /v1/challenges/{challenge_slug}/submissions
+    X-Hotkey: <miner-hotkey>
+    X-Signature: <signature>
+    X-Nonce: <nonce>
+    X-Timestamp: <timestamp>
+    ```
+
+    The signing message and rules are in
+    [Authentication & signing](/miners/authentication)
+    (`src/platform_network/security/miner_auth.py:96-111`).
+  </Step>
+  <Step title="Track your submission">
+    Poll the submission status and watch the leaderboard
+    (`src/platform_network/master/app_proxy.py:514-518`, `docs/miner/README.md:50,62`):
+
+    ```bash
+    curl -sf "$PROXY_URL/v1/challenges/{challenge_slug}/submissions/{submission_id}"
+    curl -sf "$PROXY_URL/challenges/{challenge_slug}/leaderboard"
+    ```
+
+    See [Monitoring & logs](/miners/monitoring).
+  </Step>
+</Steps>
+
+<Tip>
+`$PROXY_URL` is the public subnet proxy. The configured registry/proxy URL defaults to
+`https://chain.platform.network` (`src/platform_network/config/settings.py:21`,
+`config/master.example.yaml:11`). On a local single-node bring-up the proxy answers on
+host port `18080` (`README.md:262`).
+</Tip>
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Wallet & registration" icon="wallet" href="/miners/wallet-registration">
+    Register your hotkey on netuid 100.
+  </Card>
+  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
+    The full upload protocol.
+  </Card>
+  <Card title="Authentication & signing" icon="signature" href="/miners/authentication">
+    Build the canonical signing message.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/miners/troubleshooting">
+    Fix 401, 409, 413, and 502 errors.
+  </Card>
+</CardGroup>
+</content>

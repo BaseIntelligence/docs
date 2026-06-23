@@ -1,0 +1,123 @@
+---
+title: "The submitter"
+description: "The submit-only on-chain weight submitter used on the validator node."
+---
+
+The submitter is a trimmed, submit-only process that replaces the full
+`platform validator run` deployment on the validator node
+(`deploy/swarm/submitter/run_submitter.py:1-7`). It does one thing: every
+`weights_interval_seconds` it fetches the master's final weight vector over HTTP
+and submits it on-chain with the validator hotkey
+(`deploy/swarm/submitter/run_submitter.py:4-7`).
+
+## What it deliberately omits
+
+Compared to the full validator runtime, the submitter drops two surfaces
+(`deploy/swarm/submitter/run_submitter.py:8-17`):
+
+<CardGroup cols={2}>
+  <Card title="No challenge orchestration" icon="ban">
+    It keeps only the submit loop. The registry reconcile loop that launches
+    challenge containers is dropped, because that belongs to the master
+    (`deploy/swarm/submitter/run_submitter.py:8-16`).
+  </Card>
+  <Card title="No database connection" icon="ban">
+    The submit path never opens the control-plane database
+    (`deploy/swarm/submitter/run_submitter.py:17`).
+  </Card>
+</CardGroup>
+
+The submit wiring mirrors production exactly: the same settings loader,
+submit runtime, `WeightsClient`, and `WeightSetter`, and the same interval
+source (`deploy/swarm/submitter/run_submitter.py:19-22`).
+
+## Run it
+
+<Steps>
+  <Step title="Provide a config">
+    The `--config` argument is required and points at the submitter YAML
+    (`deploy/swarm/submitter/run_submitter.py:57-62`).
+
+    ```bash
+    python run_submitter.py --config /etc/platform/submitter.yaml
+    ```
+  </Step>
+  <Step title="Confirm the submitting identity">
+    At startup it logs the submit target and the public hotkey SS58 address, so
+    you can confirm the identity before go-live. It never logs the private key
+    (`deploy/swarm/submitter/run_submitter.py:30-32,65-87`).
+  </Step>
+</Steps>
+
+## The submitter config
+
+The submitter config is the minimal config the settings loader accepts for the
+submit-only path, and it carries no credentials
+(`deploy/swarm/submitter/submitter.yaml:6-8`):
+
+```yaml
+network:
+  name: platform
+  netuid: 100
+  chain_endpoint: ''
+  wallet_name: platform-validator
+  wallet_hotkey: validator
+  wallet_path: /var/lib/platform/wallets
+  master_uid: 0
+
+validator:
+  weights_url: https://chain.platform.network
+  weights_interval_seconds: 360
+  weights_timeout_seconds: 15.0
+  weights_retries: 3
+  weights_freshness_seconds: 720
+```
+
+Source: `deploy/swarm/submitter/submitter.yaml:27-47`. The `database` and
+`docker` blocks are intentionally omitted because the submit path never uses them
+(`deploy/swarm/submitter/submitter.yaml:10-19`).
+
+## Run as a service
+
+The validator node runs the submitter as a systemd service
+(`deploy/swarm/submitter/platform-submitter.service`). The install paths are
+fixed (`deploy/swarm/submitter/platform-submitter.service:8-14`):
+
+- script: `/var/lib/platform/submitter/run_submitter.py`
+- config: `/etc/platform/submitter.yaml`
+- wallet: `/var/lib/platform/wallets/platform-validator/hotkeys/validator`
+
+The unit starts the interpreter against the config and restarts on failure with
+`Restart=always` and `RestartSec=10`
+(`deploy/swarm/submitter/platform-submitter.service:38-40`).
+
+```bash
+systemctl enable --now platform-submitter.service
+```
+
+Source: `deploy/swarm/submitter/platform-submitter.service:21`.
+
+## Clean shutdown
+
+On `SIGTERM` (systemd stop) or `SIGINT`, the submitter cancels at the next sleep.
+An in-flight `set_weights` is a single synchronous extrinsic call, so a
+submission already in progress completes fully and the stop never leaves a
+half-submitted state (`deploy/swarm/submitter/run_submitter.py:192-203`).
+
+<Tip>
+Mutual exclusion with the k3s validator is operational, not enforced in code.
+Scale the k3s validator to zero and wait one weights interval before you start
+this unit. On rollback, stop this unit first, then scale k3s back up
+(`deploy/swarm/submitter/platform-submitter.service:23-26`).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Weight setting" icon="scale-balanced" href="/validators/weight-setting">
+    The cadence and validation the submitter applies.
+  </Card>
+  <Card title="Monitoring & logs" icon="chart-line" href="/validators/monitoring">
+    Read the submitter's per-iteration log lines.
+  </Card>
+</CardGroup>

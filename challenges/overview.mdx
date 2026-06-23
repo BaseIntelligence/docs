@@ -1,0 +1,60 @@
+---
+title: "Challenges on BaseIntelligence"
+description: "The challenges that run on the BaseIntelligence subnet, and how each one rewards miners."
+---
+
+BaseIntelligence is a multi-challenge Bittensor subnet (netuid 100). Each challenge is an independent repository and Docker image that owns its own logic, public routes, submissions, scoring data, and database schema. The subnet routes miner traffic to the right challenge, collects each challenge's raw scores, and normalizes them into subnet weights.
+
+Every challenge exposes the same minimal contract to the subnet:
+
+```text
+GET /health
+GET /version
+GET /internal/v1/get_weights
+```
+
+The internal weight endpoint is authenticated with a per-challenge shared token mounted by the master. Public traffic reaches a challenge through `/challenges/{slug}/...`.
+
+## Primary challenges
+
+These two challenges have dedicated tabs with full miner, validator, and integrator guides.
+
+<CardGroup cols={2}>
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge">
+    Build software engineering agents that solve benchmark tasks in isolated environments.
+  </Card>
+  <Card title="PRISM" icon="microscope" href="/challenges/prism">
+    Submit a model architecture and training loop; scored on its ability to learn from scratch.
+  </Card>
+</CardGroup>
+
+## Additional challenges
+
+Overview pages for secondary challenges. See each repository for full detail.
+
+<CardGroup cols={3}>
+  <Card title="Bounty Challenge" icon="handshake" href="/challenges/bounty-challenge">
+    Owner-reviewed project bounties that need human judgment.
+  </Card>
+  <Card title="Data Fabrication" icon="database" href="/challenges/data-fabrication">
+    Generate diverse, high-quality agentic coding datasets.
+  </Card>
+  <Card title="Agent SWE" icon="robot" href="/challenges/agent-swe">
+    Real-code software engineering benchmarks for agents.
+  </Card>
+</CardGroup>
+
+## Build a challenge
+
+<CardGroup cols={2}>
+  <Card title="Creating a challenge" icon="hammer" href="/challenges/creating">
+    Scaffold a new challenge repository and wire it into the subnet.
+  </Card>
+  <Card title="Challenge SDK" icon="toolbox" href="/challenges/sdk">
+    The shared challenge-side helpers for evaluation and weights.
+  </Card>
+</CardGroup>
+
+<Tip>
+  Not sure which challenge to mine? Start with [Choosing a challenge](/miners/choose-a-challenge).
+</Tip>

@@ -1,0 +1,91 @@
+---
+title: "PRISM overview"
+description: "PRISM is the decentralized neural architecture search challenge that scores how fast a model learns from scratch on locked data."
+icon: "microscope"
+---
+
+PRISM is a BaseIntelligence challenge for **decentralized neural architecture search (NAS)**. Miners submit a model architecture and a training recipe, and the challenge competes them on a single, cheat-resistant question: **how fast does a model learn from scratch?**
+
+PRISM fixes the dataset and the evaluation protocol; it does not fix the model search space beyond a Python contract, a static sandbox, a parameter cap, and resource limits.
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/prism">
+  PRISM challenge source — decentralized neural architecture search; miners submit architectures and training recipes for competitive evaluation.
+</Card>
+
+## What PRISM measures
+
+PRISM does not ask miners to train a frontier model. It asks a sharper question: given a fixed dataset and a forced random initialization, how quickly does a model learn? PRISM measures that as **online compression** — the better a model predicts each new chunk of text *before* training on it, the better it compresses the stream, and the better it scores.
+
+PRISM is designed to answer questions such as:
+
+- Which architectures learn fastest from scratch under a fixed compute budget?
+- Which training loops (optimizer, schedule, data ordering, distributed strategy) improve sample efficiency?
+- Which ideas hold up when the validator — not the miner — controls the seed, the data, and the metric?
+
+_Source: `docs/overview.md:8-19` (clone path in [Sources](#sources))._
+
+## What miners submit
+
+A submission is a two-script bundle (a `.zip` archive or a directory snapshot):
+
+- `architecture.py` exposes `build_model(ctx)`, a factory returning a `torch.nn.Module`.
+- `training.py` exposes `train(ctx)`, the miner-owned training loop.
+
+An optional `prism.yaml` manifest declares the entrypoints, the chosen tokenizer, and the submit mode. A single combined module no longer satisfies the contract: the architecture and training roles must be two distinct scripts.
+
+_Source: `docs/overview.md:40-49`; `src/prism_challenge/evaluator/components.py:99-103`._
+
+## Why the miner owns the loop but not the score
+
+The miner owns the model and the training procedure, including multi-GPU scaling. The challenge owns everything that makes the comparison fair and cheat-resistant:
+
+- the dataset content and the secret `val`/`test` splits;
+- the forced random seed and deterministic flags;
+- the data order and the single-pass online-loss capture;
+- the scoring.
+
+Any metric the miner reports and any manifest the miner writes are ignored. Scoring always reads the challenge-authored `prism_run_manifest.v2.json`.
+
+_Source: `docs/overview.md:50-61`._
+
+## The signal that matters
+
+The primary signal is the **prequential bits-per-byte (bpb)**: the area under the from-scratch online loss curve, normalized by the raw UTF-8 bytes consumed. A model that learns faster compresses better and ranks higher. A held-out delta-over-random-init breaks near-ties, and an excessive train-vs-held-out gap flags memorization and penalizes the score.
+
+_Source: `docs/overview.md:76-79`; `docs/scoring.md:8-26`._
+
+See [Scoring](/prism/scoring) for the math and [How PRISM works](/prism/how-it-works) for the full pipeline.
+
+## Anti-cheat by construction
+
+PRISM is designed so common cheats are inert rather than merely detected:
+
+- **No pretrained weights** — the validator forces random init, so smuggled weights produce an anomalous step-0 loss that zeroes the score; the container runs `network=none`.
+- **No metric manipulation** — the challenge re-executes and computes the metric itself from the online loss it captured.
+- **No memorization** — the `val`/`test` splits are secret and never exposed to the miner; an excessive train-vs-held-out gap penalizes the score.
+- **Determinism** — fixed seeds and deterministic algorithms make the same submission reproduce the same score within tolerance.
+
+_Source: `README.md:125-139`._
+
+## Where to go next
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/prism/quickstart">
+    Build and submit your first two-script bundle.
+  </Card>
+  <Card title="How PRISM works" icon="gears" href="/prism/how-it-works">
+    The FastAPI service, worker queue, GPU evaluator, and weights module.
+  </Card>
+  <Card title="Submitting to PRISM" icon="upload" href="/prism/submit">
+    The three submit modes and the `prism.yaml` manifest.
+  </Card>
+  <Card title="Scoring" icon="chart-line" href="/prism/scoring">
+    Prequential bits-per-byte, tie-breaks, and weights.
+  </Card>
+</CardGroup>
+
+## Sources
+
+All citations on this page reference the `prism` repository pinned at SHA
+`6f3e1fb8a5ad5d8ed007334039a85a3168792c61` (see `SOURCES.md`), cloned at
+`/projects/baseintelligence/sources/prism`.

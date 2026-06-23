@@ -1,0 +1,78 @@
+---
+title: "Creating a challenge"
+description: "Scaffold a new challenge repository from the BaseIntelligence template and wire it into the subnet."
+---
+
+A challenge is an independent repository and Docker image. It owns its logic, public routes, submissions, scoring data, database schema, and challenge-local files. This page covers scaffolding a new challenge and registering it with the subnet.
+
+## Scaffold the repository
+
+Generate a new challenge repository from the template with the challenge CLI:
+
+```bash
+uv run platform challenge create code-arena --out ../code-arena
+cd ../code-arena
+uv run --extra dev pytest
+```
+
+The `create` command renders the challenge template into the destination path and reports how many files were written. You can pass `--name`, `--image`, and `--version` to override the defaults, and `--overwrite` to replace existing files.
+
+The template is rendered from a `ChallengeTemplateContext` built from the slug: the slug becomes the package name, display name, and the GHCR image reference for the new repository.
+
+## Implement the weight contract
+
+In the generated repository, implement the weight function the subnet reads:
+
+```python
+async def get_weights() -> dict[str, float]:
+    return {"5F...hotkey": 1.0}
+```
+
+The master normalizes returned values, so raw scores are acceptable as long as they are finite and non-negative.
+
+## Required API
+
+Every challenge must expose the same minimal contract:
+
+```text
+GET /health
+GET /version
+GET /internal/v1/get_weights
+```
+
+The internal endpoint is authenticated with a per-challenge shared token mounted by the master. Public routes are exposed through `/challenges/{slug}/...`.
+
+## Database and storage
+
+Generated challenges use the async SQLAlchemy SDK and read their runtime database URL from `CHALLENGE_DATABASE_URL`. The runtime is SQLite-backed; the subnet injects a URL pointing at the SQLite file on the challenge `/data` Swarm volume:
+
+```text
+sqlite+aiosqlite:////data/challenge.sqlite3
+```
+
+Use `/data` for the SQLite database, artifacts, analyzer output, uploaded files, and any local state that should survive restarts. It is the only persistent store for a challenge, and it is retained by default when a challenge service is removed.
+
+<Tip>
+  Challenges must never receive central control-plane PostgreSQL credentials. The shared control-plane database is only for master and validator state.
+</Tip>
+
+## Register and run
+
+Once the image is built and published, register and activate the challenge through the admin CLI:
+
+```bash
+uv run platform challenge register code-arena ghcr.io/.../code-arena:latest 0.1
+uv run platform challenge activate code-arena
+```
+
+The generated CI workflow tests the challenge and pushes its Docker image to GHCR on main and tags.
+
+## Next
+
+<Card title="Challenge SDK" icon="toolbox" href="/challenges/sdk">
+  The shared challenge-side helpers used by generated challenges.
+</Card>
+
+---
+
+Sources: `base/docs/challenges.md` (model, required API, create command), `base/docs/challenge-integration.md` (`get_weights`, database contract, storage), `base/src/platform_network/cli_app/main.py:857` (`challenge create`) and `:873` (`challenge register`), `base/src/platform_network/template_engine.py:13` (`ChallengeTemplateContext`) and `:62` (`render_challenge_template`).

@@ -1,0 +1,88 @@
+---
+title: "Validator quickstart"
+description: "Install, configure, and start a BaseIntelligence validator from the CLI."
+---
+
+This is the fastest path to a running validator that submits weights on-chain
+for netuid **100** (`src/platform_network/config/settings.py:12`).
+
+## Prerequisites
+
+- Python **3.12 or newer** (`pyproject.toml:5`).
+- A Bittensor wallet (coldkey + hotkey) registered on netuid 100.
+- The `platform` CLI installed with its bittensor extra (next step).
+
+## Get started
+
+<Steps>
+  <Step title="Install the validator">
+    Install the package with the validator extra, which pulls in `bittensor>=9`
+    (`pyproject.toml:40`).
+
+    ```bash
+    pip install 'platform-network[validator]'
+    ```
+
+    The install provides the `platform` command (`pyproject.toml:43`).
+  </Step>
+  <Step title="Create your config">
+    Copy the example validator config and edit the wallet and network fields.
+
+    ```bash
+    cp config/validator.example.yaml config/validator.yaml
+    ```
+
+    The example sets `netuid: 100` and the validator loop defaults
+    (`config/validator.example.yaml:1-22`). See
+    [Configuration](/validators/configuration) for every field.
+  </Step>
+  <Step title="Point at the registry">
+    `registry_url` defaults to `https://chain.platform.network`
+    (`config/validator.example.yaml:16`). When `weights_url` is left null, the
+    validator fetches weights from the same `registry_url`
+    (`src/platform_network/config/settings.py:50-52`).
+  </Step>
+  <Step title="Run the validator">
+    Start the runtime. It reconciles challenges and submits weights on-chain
+    (`src/platform_network/cli_app/main.py:834-854`).
+
+    ```bash
+    platform validator run --config config/validator.yaml
+    ```
+
+    The default config path is `config/validator.example.yaml`
+    (`src/platform_network/cli_app/main.py:835`).
+  </Step>
+  <Step title="Confirm it is submitting">
+    The submit loop runs every `weights_interval_seconds`, which defaults to
+    **360 seconds** (`config/validator.example.yaml:19`,
+    `src/platform_network/config/settings.py:45`). Watch the logs for weight
+    submission. See [Monitoring](/validators/monitoring).
+  </Step>
+</Steps>
+
+## Verify the registry connection
+
+Print the live registry the validator reads, to confirm connectivity
+(`src/platform_network/cli_app/main.py:943-948`):
+
+```bash
+platform registry print --config config/validator.yaml
+```
+
+<Tip>
+If the validator infrastructure requirements are too high, you can delegate
+validation power with Bittensor CHK / stake-weight check instead of running this
+stack (`config/validator.example.yaml:10-13`).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Running a validator" icon="play" href="/validators/running">
+    Runtime details and the two concurrent loops.
+  </Card>
+  <Card title="Weight setting" icon="scale-balanced" href="/validators/weight-setting">
+    The cadence and the on-chain submit path.
+  </Card>
+</CardGroup>

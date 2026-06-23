@@ -1,0 +1,128 @@
+---
+title: "Authentication & signing"
+description: "Build the canonical upload message, sign it with your hotkey, and set the four required headers."
+icon: "signature"
+---
+
+Every upload is authenticated with a hotkey signature. The proxy reconstructs a canonical
+message from your request, verifies your signature against your hotkey, checks freshness and
+replay, and resolves your hotkey to a UID
+(`src/platform_network/security/miner_auth.py:150-198`). This page shows exactly what to
+sign.
+
+## Required headers
+
+You send four headers on every signed upload
+(`src/platform_network/security/miner_auth.py:159-162`, `docs/miner/README.md:90-95`):
+
+```http
+X-Hotkey: <miner-hotkey>
+X-Signature: <signature>
+X-Nonce: <nonce>
+X-Timestamp: <timestamp>
+```
+
+| Header | Meaning | Source |
+|--------|---------|--------|
+| `X-Hotkey` | Your ss58 hotkey address | `src/platform_network/security/miner_auth.py:159` |
+| `X-Signature` | Signature over the canonical message | `src/platform_network/security/miner_auth.py:160` |
+| `X-Nonce` | Unique per-request value (replay protection) | `src/platform_network/security/miner_auth.py:161` |
+| `X-Timestamp` | Unix seconds, checked for freshness | `src/platform_network/security/miner_auth.py:162-169` |
+
+Any missing header fails with `missing <header>`
+(`src/platform_network/security/miner_auth.py:230-234`).
+
+## The canonical message
+
+The signed message is built exactly as
+(`src/platform_network/security/miner_auth.py:96-111`):
+
+```text
+platform-upload-v1:{netuid}:{challenge_slug}:{METHOD}:{path}:{hotkey}:{nonce}:{timestamp}:{body_hash}
+```
+
+Where:
+
+- `netuid` is `100` (`src/platform_network/config/settings.py:12`).
+- `challenge_slug` is the resolved challenge slug, for example `agent-challenge` or `prism`
+  (`src/platform_network/master/app_proxy.py:438`).
+- `METHOD` is the uppercased HTTP method
+  (`src/platform_network/security/miner_auth.py:109`).
+- `path` is the request path
+  (`src/platform_network/master/app_proxy.py:435`).
+- `hotkey`, `nonce`, and `timestamp` are the same values as your headers
+  (`src/platform_network/security/miner_auth.py:171-179`).
+- `body_hash` is the SHA-256 hex digest of the raw request body
+  (`src/platform_network/security/miner_auth.py:170`).
+
+## How to sign
+
+<Steps>
+  <Step title="Compute the body hash">
+    Take the SHA-256 of the exact bytes you will upload and hex-encode it
+    (`src/platform_network/security/miner_auth.py:170`).
+  </Step>
+  <Step title="Assemble the canonical message">
+    Concatenate the fields with the `platform-upload-v1:` prefix and colon separators,
+    using `netuid` `100`, the challenge slug, the uppercased method, the path, your hotkey,
+    your nonce, your timestamp, and the body hash
+    (`src/platform_network/security/miner_auth.py:96-111`).
+  </Step>
+  <Step title="Sign with your hotkey">
+    Sign the message bytes with your hotkey keypair. Verification uses the substrate ss58
+    keypair `verify` (`src/platform_network/security/miner_auth.py:114-121`).
+  </Step>
+  <Step title="Encode the signature">
+    Provide the signature as a hex string, with or without a `0x` prefix
+    (`src/platform_network/security/miner_auth.py:222-227`).
+  </Step>
+  <Step title="Set the headers and send">
+    Set `X-Hotkey`, `X-Signature`, `X-Nonce`, and `X-Timestamp`, then POST the body
+    (`src/platform_network/security/miner_auth.py:159-162`).
+  </Step>
+</Steps>
+
+## Freshness and replay
+
+- **Freshness:** a timestamp more than `300` seconds from server time fails with
+  `stale signature` (`src/platform_network/security/miner_auth.py:168-169`,
+  `src/platform_network/config/settings.py:33`).
+- **Replay:** each nonce is reserved per netuid, challenge, and hotkey; a reused nonce fails
+  with `nonce already used` (`src/platform_network/security/miner_auth.py:60-90`). Nonces
+  are retained for `86,400` seconds (`src/platform_network/config/settings.py:34`).
+- **Timestamp format:** a non-integer timestamp fails with `invalid timestamp`
+  (`src/platform_network/security/miner_auth.py:163-166`).
+
+<Tip>
+The signature covers the body hash, so any change to the bytes you upload, including a
+re-zip with a different timestamp inside the archive, changes `body_hash` and invalidates
+the signature (`src/platform_network/security/miner_auth.py:170-180`). Sign the exact bytes
+you send.
+</Tip>
+
+## Identity resolution
+
+After the signature verifies, your hotkey is resolved to a UID from the metagraph
+(`src/platform_network/security/miner_auth.py:183,200-219`):
+
+- An unregistered hotkey fails with `unknown hotkey`
+  (`src/platform_network/security/miner_auth.py:213-215`).
+- UID `0` is blocked and fails with `blocked uid`
+  (`src/platform_network/security/miner_auth.py:143,217-218`).
+
+<Tip>
+Use only fake placeholder values in any examples you publish; the live header values are
+your real hotkey and a real signature (`docs/miner/README.md:88-95`).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
+    Apply this signature to the upload endpoints.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/miners/troubleshooting">
+    Resolve signature and replay errors.
+  </Card>
+</CardGroup>
+</content>

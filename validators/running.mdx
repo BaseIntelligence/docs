@@ -1,0 +1,86 @@
+---
+title: "Running a validator"
+description: "Start the validator runtime and understand the two loops it runs."
+---
+
+`platform validator run` starts the normal validator runtime
+(`src/platform_network/cli_app/main.py:834-854`). It runs two coroutines
+concurrently with `asyncio.gather`
+(`src/platform_network/cli_app/main.py:821-831`).
+
+## Start the runtime
+
+<Steps>
+  <Step title="Run the command">
+    ```bash
+    platform validator run --config config/validator.yaml
+    ```
+
+    The config defaults to `config/validator.example.yaml` when `--config` is
+    omitted (`src/platform_network/cli_app/main.py:835`).
+  </Step>
+  <Step title="Runtime builds the submit wiring">
+    Startup constructs the bittensor submit runtime (subtensor + wallet +
+    weight setter) from your config
+    (`src/platform_network/cli_app/main.py:838`,
+    `src/platform_network/bittensor/factory.py:62-76`).
+  </Step>
+</Steps>
+
+## The two loops
+
+<CardGroup cols={2}>
+  <Card title="Registry reconcile" icon="arrows-rotate">
+    `run_forever` calls `run_once` and then sleeps `retry_seconds` between
+    passes (`validator/normal_runner.py:109-115`). Each pass fetches the
+    registry and starts the active challenges
+    (`validator/normal_runner.py:45-62`).
+  </Card>
+  <Card title="Weight submit" icon="scale-balanced">
+    `run_epoch_loop` calls `submit_latest_weights` every
+    `weights_interval_seconds` (`src/platform_network/cli_app/main.py:828-831`,
+    `bittensor/validator_loop.py:10-18`).
+  </Card>
+</CardGroup>
+
+## Reconcile cadence
+
+The reconcile loop retries on the `registry_retry_seconds` interval, which
+defaults to **15 seconds** (`config/validator.example.yaml:17`,
+`src/platform_network/config/settings.py:43`). It maps to the runner's
+`retry_seconds` (`validator/normal_runner.py:31`). On any error it logs and
+retries on the next interval (`validator/normal_runner.py:109-115`).
+
+## Submit cadence
+
+The submit loop fetches and submits weights every `weights_interval_seconds`,
+which defaults to **360 seconds** (`config/validator.example.yaml:19`,
+`src/platform_network/config/settings.py:45`). For the full submit path, read
+[Weight setting](/validators/weight-setting).
+
+## Where weights come from
+
+The validator fetches the latest vector from the master over HTTP at
+`GET /v1/weights/latest` (`validator/weights_client.py:18-30`). The URL is
+`resolved_weights_url`, which is `weights_url` when set, otherwise `registry_url`
+(`src/platform_network/config/settings.py:50-52`). The fetch uses
+`weights_timeout_seconds` (default 15.0) and retries `weights_retries` times
+(default 3) (`config/validator.example.yaml:20-21`).
+
+## Submit-only alternative
+
+On the Docker Swarm validator node, a trimmed submit-only process replaces the
+full runtime and runs only the submit loop, with no challenge orchestration and
+no database connection (`deploy/swarm/submitter/run_submitter.py:1-17`). See
+[The submitter](/validators/submitter).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Monitoring & logs" icon="chart-line" href="/validators/monitoring">
+    Read the runtime's log output.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/validators/troubleshooting">
+    Fix common failures.
+  </Card>
+</CardGroup>

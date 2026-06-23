@@ -1,0 +1,79 @@
+---
+title: "Supervisor"
+description: "The manager-only systemd watchdog that runs the broker-health, timeout-reaper, image-updater, config-sync, and self-update loops for the subnet control plane."
+icon: "heart-pulse"
+---
+
+The **supervisor** is a single watchdog-supervised systemd service on the manager
+node. It replaces the old Kubernetes CronJobs with one process that runs the
+control-plane maintenance loops.
+
+_Source: `docs/master/README.md:39-41`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The supervisor systemd unit and the manager-only maintenance loops.
+</Card>
+
+## The unit
+
+The unit is `Type=notify` with a 30-second watchdog and runs the master supervisor
+command against the manager config:
+
+```text
+platform master supervisor --config /etc/platform/master.yaml
+```
+
+_Source: `docs/master/README.md:50-54`._
+
+It is installed from `deploy/swarm/platform-supervisor.service` and enabled with
+systemd.
+
+_Source: `docs/master/README.md:41-47`; `README.md:179`._
+
+## The loops
+
+The supervisor loops run on the manager only:
+
+| Loop | Responsibility |
+|------|----------------|
+| broker-health | Watch broker health |
+| timeout-reaper | Reap jobs that exceed their timeout |
+| image-updater | Roll control-plane services when a mutable image tag moves |
+| challenge-image-updater | Roll challenge services when their image tag moves |
+| config-sync | Keep service config in sync |
+| self-update | Update the supervisor itself |
+
+_Source: `docs/master/README.md:56`; `README.md:179`._
+
+## Timeout reaper
+
+The timeout-reaper is the manager-only backstop for broker cleanup: it independently
+reaps jobs that exceed their timeout, so a crashed or unreachable challenge cannot
+leak long-running services even if the broker's own
+[cleanup path](/architecture/broker) does not run.
+
+_Source: `docs/security.md:45`._
+
+## Image updaters
+
+The image updaters resolve the public container-registry tag digest and roll the
+Swarm services to `tag@sha256:<digest>` only when a mutable tag actually moves. No
+registry pull secret is required for public packages.
+
+_Source: `docs/master/README.md:56`; `README.md:184`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master node" icon="server" href="/architecture/master">
+    The manager node the supervisor runs on.
+  </Card>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    The job dispatch the timeout-reaper backstops.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`).

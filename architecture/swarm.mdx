@@ -1,0 +1,114 @@
+---
+title: "Swarm and miner pool"
+description: "The Docker Swarm topology: a single manager node for the control plane and challenge services, plus manually enrolled CPU/GPU worker nodes for short-lived evaluation jobs."
+icon: "docker"
+---
+
+First-party deployments of the subnet are **Docker Swarm only**. There is no Helm
+chart, no Kubernetes manifests, and no `runtime.backend` selector — the only backend
+is Swarm.
+
+_Source: `docs/architecture.md:67`; `README.md:35`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The Swarm installer, overlay networking, and worker enrollment CLI.
+</Card>
+
+## Topology
+
+| Node | Swarm role | Runs |
+|------|------------|------|
+| Manager | `node.role==manager` | Control plane (proxy / broker / supervisor) and the long-lived challenge services |
+| CPU worker | `node.labels.platform.workload==cpu` | Short-lived CPU broker jobs |
+| GPU worker | `node.labels.platform.workload==gpu` | Short-lived GPU broker jobs; advertises `NVIDIA-GPU` as a Swarm generic resource |
+
+_Source: `README.md:250-254`; `src/platform_network/config/settings.py:102-104`._
+
+The manager runs every active challenge service on the host, pinned with the
+placement constraint `node.role==manager`; only short-lived broker jobs are
+dispatched to workers.
+
+_Source: `docs/architecture.md:40`, `docs/architecture.md:44-46`._
+
+## Bringing up the manager
+
+The manager is brought up with `deploy/swarm/install-swarm.sh`, which provisions the
+master proxy, broker, and challenge services on encrypted overlay networks, plus the
+systemd supervisor unit. The installer is **dry-run by default**: with no flags it
+prints every planned mutating command and changes nothing; it mutates only with
+`--apply`, and every destructive step is behind its own explicit flag.
+
+_Source: `docs/architecture.md:67`; `docs/master/README.md:22-37`; `README.md:178`._
+
+The installer initializes the Swarm, creates the encrypted overlay networks
+(`platform_challenges` and the internal `platform_jobs_internal`, MTU 1450), creates
+the value-bearing Docker secrets via stdin (never argv), and creates the master proxy,
+broker, and challenge services.
+
+_Source: `docs/master/README.md:37`; `README.md:366`._
+
+## Networking
+
+Swarm networking uses encrypted overlay networks at MTU 1450. The required inter-node
+ports are:
+
+| Port | Protocol | Purpose |
+|------|----------|---------|
+| `2377` | tcp | Cluster management |
+| `7946` | tcp + udp | Node gossip |
+| `4789` | udp | VXLAN data plane |
+| IP proto 50 | ESP | Encrypted overlay |
+
+_Source: `README.md:186`._
+
+## Worker enrollment
+
+Workers are enrolled manually with a Swarm join token (no SSH). From the manager, the
+`platform master worker` CLI group manages them:
+
+<Steps>
+  <Step title="Print the join command">
+    On the manager, run `platform master worker token --cpu` (or `--gpu`); it prints
+    `docker swarm join --token <TOKEN> <MANAGER_IP>:2377`.
+  </Step>
+  <Step title="Join from the worker">
+    On the worker, install the matching `daemon.json` (the GPU variant advertises
+    `NVIDIA-GPU` and registers the NVIDIA runtime), then run the join command.
+  </Step>
+  <Step title="Label the node">
+    Back on the manager, run `platform master worker label <node> --workload cpu`
+    (or `gpu`) so the broker schedules jobs onto it.
+  </Step>
+</Steps>
+
+_Source: `docs/architecture.md:51`; `docs/master/README.md:58-80`._
+
+The broker then schedules CPU jobs onto `node.labels.platform.workload==cpu` and GPU
+jobs onto `node.labels.platform.workload==gpu`.
+
+_Source: `docs/master/README.md:80`; `src/platform_network/config/settings.py:103-104`._
+
+## Resource limits
+
+Swarm service resources map CPU and memory to `--limit-cpu` and `--limit-memory`, and
+PID ceilings to `--limit-pids`. `docker service create` does not support
+`--memory-swap` or `--security-opt`, so swap limits are not emitted and
+`no-new-privileges` is enforced daemon-wide via `daemon.json`.
+
+_Source: `docs/architecture.md:71`; `README.md:187`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    How CPU/GPU jobs are dispatched to the worker pool.
+  </Card>
+  <Card title="Supervisor" icon="heart-pulse" href="/architecture/supervisor">
+    The manager-only maintenance loops.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`).

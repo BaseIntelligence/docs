@@ -1,0 +1,132 @@
+---
+title: "PRISM API"
+description: "The PRISM HTTP API: public challenge routes for submissions and the leaderboard, and the internal bridge, worker, and weights routes."
+icon: "code-branch"
+---
+
+PRISM exposes **public** challenge routes and **internal** routes. The public routes are mounted under the `/v1` prefix; the internal routes are mounted under `/internal/v1` and require internal authentication.
+
+_Source: `src/prism_challenge/routes.py:25`; `src/prism_challenge/app.py:64-72`; `docs/api.md:1-3`._
+
+<Tip>
+**Internal routes are not for miners.** Every route under `/internal/v1` requires internal authentication (`Authorization: Bearer <shared-token>`) and is called by the master, the proxy, or the worker — never directly by a miner. They are clearly marked **INTERNAL** below.
+</Tip>
+
+## Public routes
+
+### `POST /v1/submissions`
+
+Submit a two-script bundle directly to PRISM. The direct public route uses miner authentication headers (`auth_required=True`, resolved by `authenticate_miner`). In production, miner submissions usually enter through the proxy, which uses the internal bridge route instead.
+
+```json
+{
+  "filename": "project.zip",
+  "code": "<base64 zip payload>",
+  "metadata": {}
+}
+```
+
+_Source: `src/prism_challenge/routes.py:32-52`; `docs/api.md:15-31`._
+
+### `GET /v1/submissions/history`
+
+Returns daily submission counts over a window (`days`, default 90).
+
+_Source: `src/prism_challenge/routes.py:55-67`._
+
+### `GET /v1/submissions/{submission_id}`
+
+Returns status and score fields:
+
+```json
+{
+  "id": "...",
+  "hotkey": "...",
+  "epoch_id": 123,
+  "status": "completed",
+  "code_hash": "...",
+  "created_at": "...",
+  "error": null,
+  "final_score": 0.72,
+  "anti_cheat_multiplier": 1.0
+}
+```
+
+`final_score` is the challenge-computed prequential bits-per-byte score (a lower bpb yields a higher `final_score`). `status` can be `pending`, `running`, `completed`, `failed`, `rejected`, or `held`. The response also carries `q_arch`, `q_recipe`, `diversity_bonus`, and `penalty` as **legacy fields** retained for response-schema stability; the live scoring path populates `final_score`.
+
+_Source: `src/prism_challenge/routes.py:70-78`; `docs/api.md:37-61`._
+
+### `GET /v1/leaderboard`
+
+Returns submissions ranked by `final_score` for the current epoch (earliest-commit-wins on a tie, one entry per hotkey). Optional `epoch_id` query.
+
+_Source: `src/prism_challenge/routes.py:81-103`._
+
+### `GET /v1/architectures`
+
+**Legacy** family-listing endpoint retained for API compatibility (`limit`, default 50).
+
+_Source: `src/prism_challenge/routes.py:106-123`; `docs/api.md:68-70`._
+
+### `GET /v1/training-variants`
+
+**Legacy** variant-listing endpoint retained for API compatibility. Optional query parameters: `architecture_id`, `limit`.
+
+_Source: `src/prism_challenge/routes.py:126-151`; `docs/api.md:72-75`._
+
+### `GET /v1/epochs/current` and `GET /v1/epochs`
+
+Return the current epoch id and length, and recent epochs (`limit`, default 50).
+
+_Source: `src/prism_challenge/routes.py:154-175`._
+
+### `GET /v1/health/eval-jobs`
+
+Returns recent eval-job health entries (id, submission id, level, status, attempts).
+
+_Source: `src/prism_challenge/routes.py:178-195`._
+
+### `GET /v1/gpu/status`
+
+Returns a GPU-lease summary (total GPUs, active leases, by status, by tier).
+
+_Source: `src/prism_challenge/routes.py:198-219`._
+
+## Internal routes
+
+<Tip>
+All internal routes require `Authorization: Bearer <shared-token>` and are gated by `authenticate_internal`. They are part of the subnet integration surface, **not** the miner API.
+</Tip>
+
+### `POST /internal/v1/bridge/submissions` — INTERNAL
+
+Receives subnet-verified submissions forwarded by the proxy. Gated by `authenticate_internal`. The verified hotkey is supplied by the trusted `X-Platform-Verified-Hotkey` header; miner-supplied identity headers are not trusted. The body can be raw ZIP bytes or JSON matching `SubmissionCreate`.
+
+```text
+Authorization: Bearer <shared-token>
+X-Platform-Verified-Hotkey: <hotkey>
+X-Submission-Filename: project.zip
+Content-Type: application/zip
+```
+
+_Source: `src/prism_challenge/app.py:68-86`; `_bridge_submission_create` `app.py:91-107`; `docs/api.md:106-119`._
+
+### `POST /internal/v1/worker/process-next` — INTERNAL
+
+Claims and processes one pending submission through the full pipeline: the static gates, the OpenRouter LLM hard gate, the forced-init re-execution, and prequential bits-per-byte scoring. Gated by `authenticate_internal`.
+
+_Source: `src/prism_challenge/app.py:64-66`; `docs/api.md:121-124`._
+
+### `GET /internal/v1/get_weights` — INTERNAL
+
+The standard challenge contract route. Returns normalized, dry-run hotkey weights (one per hotkey, from that hotkey's best `final_score`). Weights are never written on-chain. The handler is wired into the challenge app via `get_weights_fn`.
+
+_Source: `src/prism_challenge/app.py:44-57`; `src/prism_challenge/weights.py:9-31`; `docs/api.md:101-104`._
+
+## Service routes
+
+`GET /health` returns challenge health metadata, and `GET /version` returns the challenge version, API version, SDK version, and capabilities.
+
+_Source: `docs/api.md:7-13`._
+
+See [Running PRISM](/prism/operators) for authentication configuration and deployment.

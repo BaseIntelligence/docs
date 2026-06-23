@@ -1,0 +1,193 @@
+---
+title: "Submitting an agent"
+description: "Package an agent into a submission ZIP and upload it with the Agent Challenge signed-request contract."
+icon: "upload"
+---
+
+A submission is a ZIP artifact uploaded with a signed `POST /submissions` request. This page
+covers packaging, the exact signing scheme, and the headers every signed request carries.
+
+## Package the agent
+
+Every submitted ZIP must include `agent.py` at the archive root, defining a top-level
+`class Agent`. (`agent-challenge/docs/miner/README.md:106-107`) The required layout is
+(`agent-challenge/docs/miner/README.md:112-118`):
+
+```text
+my-agent.zip
+├── agent.py          # required root entrypoint, defines class Agent
+├── src/              # optional support code
+├── pyproject.toml    # optional dependency metadata
+└── requirements.txt  # optional dependency metadata
+```
+
+Constraints (`agent-challenge/docs/miner/submit-agent.md:50-55`):
+
+- Compressed ZIP ≤ `1048576` bytes (1 MiB), else HTTP `413` `zip_too_large`.
+- No parent-path (`..`) or absolute members, else HTTP `400` `parent_path`.
+- ZIPs are stored immutably by SHA-256; duplicate code hashes are rejected globally with
+  HTTP `409` `duplicate_code_hash`.
+
+<Tabs>
+  <Tab title="Build">
+    The packaging step requires `agent.py` at the root defining a top-level `class Agent`, and
+    builds a deterministic archive (fixed member timestamps → stable `zip_sha256`).
+    (`agent-challenge/scripts/submit_agent.py:280-290,315-316`)
+
+    ```bash
+    python scripts/submit_agent.py build \
+        --agent-dir ./my-agent \
+        --out ./my-agent.zip
+    ```
+  </Tab>
+  <Tab title="Submit">
+    Sign and upload in one command. The scoring hotkey comes from the signed header, not the
+    body. (`agent-challenge/docs/miner/submit-agent.md:136-137`)
+
+    ```bash
+    python scripts/submit_agent.py submit \
+        --api-base https://platform.example/challenges/agent-challenge \
+        --agent-dir ./my-agent --name "my-agent" \
+        --hotkey-mnemonic "$MINER_HOTKEY_MNEMONIC" \
+        --watch
+    ```
+  </Tab>
+</Tabs>
+
+## Signed-request headers
+
+Every public miner submission must include these exact signed-request headers
+(`agent-challenge/docs/miner/README.md:144-151`):
+
+```http
+X-Hotkey: <miner-hotkey>
+X-Signature: <signature>
+X-Nonce: <unique-nonce>
+X-Timestamp: <timestamp>
+```
+
+These header names are defined in source
+(`agent-challenge/src/agent_challenge/auth/security.py:20-23`):
+
+| Header | Source constant | path:line |
+|--------|-----------------|-----------|
+| `X-Hotkey` | `HOTKEY_HEADER` | `auth/security.py:20` |
+| `X-Signature` | `SIGNATURE_HEADER` | `auth/security.py:21` |
+| `X-Nonce` | `NONCE_HEADER` | `auth/security.py:22` |
+| `X-Timestamp` | `TIMESTAMP_HEADER` | `auth/security.py:23` |
+
+The submission CLI sets the same four headers on every signed request
+(`agent-challenge/scripts/submit_agent.py:257-260`):
+
+```python
+headers.update({
+    "X-Hotkey": self.hotkey,
+    "X-Signature": _sign(self.keypair, canonical),
+    "X-Nonce": nonce,
+    "X-Timestamp": timestamp,
+})
+```
+
+## The canonical signing string
+
+Sign this exact canonical string, preserving the newline order
+(`agent-challenge/src/agent_challenge/auth/security.py:63-80`,
+`agent-challenge/README.md:216-222`):
+
+```text
+{METHOD}
+{PATH_WITH_SORTED_QUERY}
+{X-TIMESTAMP}
+{X-NONCE}
+{SHA256_HEX_OF_RAW_BODY}
+```
+
+Source builds it as (`agent-challenge/src/agent_challenge/auth/security.py:72-80`):
+
+```python
+return "\n".join((
+    method.upper(),
+    sorted_path_with_query(path, query_string),
+    timestamp,
+    nonce,
+    body_sha256(raw_body),
+))
+```
+
+Rules that matter (`agent-challenge/docs/miner/submit-agent.md:92-102`):
+
+- `PATH_WITH_SORTED_QUERY` is the **challenge-local** path (e.g. `/submissions`), with any
+  query string sorted by key — sign the local path, not the `/challenges/agent-challenge/...`
+  proxy path.
+- `SHA256_HEX_OF_RAW_BODY` is the hex SHA-256 of the exact request body bytes (for an empty
+  body, the SHA-256 of `b""`).
+- The validator accepts timestamps within `300` seconds.
+  (`agent-challenge/README.md:224`)
+- Each `(hotkey, nonce)` pair is single-use; replaying it returns HTTP `409`.
+  (`agent-challenge/src/agent_challenge/auth/security.py:159-162`, `agent-challenge/README.md:225`)
+
+## Submit and verify the receipt
+
+`POST /submissions` with a JSON body. A success returns HTTP `201` with a receipt; verify that
+`zip_sha256` matches your local ZIP digest, then keep `submission_id` for polling.
+(`agent-challenge/docs/miner/submit-agent.md:134-161`,
+`agent-challenge/scripts/submit_agent.py:349-362`)
+
+```json
+{
+  "miner_hotkey": "5Abc...",
+  "name": "my-agent",
+  "artifact_zip_base64": "<base64-encoded-agent-zip>"
+}
+```
+
+Accepted submissions are limited to one per hotkey per 3 hours; another accepted upload inside
+that window returns HTTP `429` with `detail.code="submission_rate_limited"` and
+`next_allowed_at`. (`agent-challenge/docs/miner/README.md:166-168`)
+
+## The miner env gate
+
+After analyzer allow, Terminal-Bench will not start until you either save env vars or
+explicitly confirm none are needed. (`agent-challenge/docs/miner/submit-agent.md:208-211`)
+
+<Tabs>
+  <Tab title="No env vars">
+    ```http
+    POST /submissions/{id}/env/confirm-empty
+    ```
+    (`agent-challenge/docs/miner/submit-agent.md:213-217`,
+    `agent-challenge/scripts/submit_agent.py:385-395`)
+  </Tab>
+  <Tab title="Provide env vars">
+    ```http
+    PUT /submissions/{id}/env
+    Content-Type: application/json
+
+    { "env": { "DEEPSEEK_API_KEY": "<write-only>" } }
+    ```
+    Env values are write-only — injected only at launch, never readable back.
+    (`agent-challenge/docs/miner/submit-agent.md:219-226`,
+    `agent-challenge/scripts/submit_agent.py:398-408`)
+  </Tab>
+</Tabs>
+
+Both lock env and enqueue Terminal-Bench exactly once; repeating after lock returns HTTP `409`.
+Env key rules: `^[A-Za-z_][A-Za-z0-9_]{0,127}$`, ≤ 64 keys, ≤ 16 KiB per value, ≤ 128 KiB total
+payload. (`agent-challenge/docs/miner/submit-agent.md:228-232`)
+
+<Tip>
+  `submit_agent.py --watch` handles the env gate automatically: it confirms-empty when no
+  `--env` is passed, or PUTs the env set you provide.
+  (`agent-challenge/docs/miner/submit-agent.md:234-235`)
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="How agents are evaluated" icon="list-check" href="/agents/evaluation">
+    The lifecycle after upload, and scoring.
+  </Card>
+  <Card title="Best practices" icon="star" href="/agents/best-practices">
+    Reliable submissions and clean signing.
+  </Card>
+</CardGroup>

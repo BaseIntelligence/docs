@@ -1,0 +1,163 @@
+---
+title: "Admin API"
+description: "Token-gated and internal endpoints for challenge administration and runtime control on the subnet master."
+icon: "lock"
+---
+
+This page documents the operator-facing admin surface and the internal endpoints
+used between the master and its containers.
+
+<Tip>
+The `/admin*` and `/v1/admin/*` routes are gated by an admin token and are **not**
+public. The Docker broker and challenge `get_weights` endpoints are **internal**
+service-to-service routes — they are not exposed to end users.
+</Tip>
+
+## Admin authentication
+
+Every management route depends on `require_admin`, which reads the token from an
+`X-Admin-Token` header or from an `Authorization: Bearer <token>` credential and
+compares it in constant time (`app_admin.py:121-130`, `auth.py:28-29`). The
+expected value comes from the `ADMIN_TOKEN` environment variable, or from the
+file at `ADMIN_TOKEN_FILE` (`auth.py:10-18`). A mismatch returns `401`
+(`app_admin.py:127-130`).
+
+```bash
+curl -s "$MASTER_URL/v1/admin/challenges/agent-challenge" \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+## Admin HTML pages
+
+| Method | Path | Returns | Source |
+|--------|------|---------|--------|
+| `GET` | `/admin` | HTML index | `app_admin.py:176-184` |
+| `GET` | `/admin/challenges` | HTML table of challenges | `app_admin.py:186-200` |
+
+Both depend on `require_admin` (`app_admin.py:176`, `app_admin.py:186`).
+
+## Challenge management routes
+
+All routes below depend on `require_admin`.
+
+### `POST /v1/admin/challenges`
+
+Creates a challenge. Returns `201 Created` (`app_admin.py:202-234`).
+
+**Request** — `ChallengeCreate` (`schemas/challenge.py:22-41`). Required fields:
+`slug` (pattern `^[a-z0-9][a-z0-9-]*[a-z0-9]$`, `schemas/challenge.py:25`),
+`name`, `image`, `version`. Optional fields include `emission_percent` (default
+`0`), `status` (default `draft`), `description`, `api_version` (default `"1.0"`),
+`internal_base_url`, `required_capabilities` (default
+`["get_weights", "proxy_routes"]`), `resources`, `volumes`, `env`, `secrets`,
+and `metadata` (`schemas/challenge.py:29-41`).
+
+**Response** — `ChallengeCreateResponse` (`schemas/challenge.py:131-136`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `challenge` | object | `ChallengeAdminView` (`schemas/challenge.py:106-128`) |
+| `challenge_token` | string | Clear token returned exactly once (`schemas/challenge.py:135`) |
+| `docker_broker_token` | string | Broker token returned exactly once (`schemas/challenge.py:136`) |
+
+A duplicate slug returns `409` (`app_admin.py:214-218`); an image that fails the
+production policy returns `400` (`app_admin.py:219-220`).
+
+```bash
+curl -s -X POST "$MASTER_URL/v1/admin/challenges" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"agent-challenge","name":"Agent Challenge","image":"registry.example/agent:1.0","version":"1.0"}'
+```
+
+### `GET /v1/admin/challenges/{slug}`
+
+Returns a `ChallengeAdminView` (`schemas/challenge.py:106-128`); unknown slug
+returns `404` (`app_admin.py:236-245`).
+
+```bash
+curl -s "$MASTER_URL/v1/admin/challenges/agent-challenge" \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+### `PATCH /v1/admin/challenges/{slug}`
+
+Updates mutable metadata and returns a `ChallengeAdminView`
+(`app_admin.py:247-264`). **Request** — `ChallengeUpdate`; all fields optional
+(`schemas/challenge.py:51-67`).
+
+```bash
+curl -s -X PATCH "$MASTER_URL/v1/admin/challenges/agent-challenge" \
+  -H "X-Admin-Token: $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"emission_percent":"25"}'
+```
+
+### Status transitions
+
+| Method | Path | Result | Source |
+|--------|------|--------|--------|
+| `POST` | `/v1/admin/challenges/{slug}/activate` | sets status `active` | `app_admin.py:266-277` |
+| `POST` | `/v1/admin/challenges/{slug}/deactivate` | sets status `inactive` | `app_admin.py:279-290` |
+
+Both return a `ChallengeAdminView` (`schemas/challenge.py:106-128`).
+
+```bash
+curl -s -X POST "$MASTER_URL/v1/admin/challenges/agent-challenge/activate" \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+### Runtime control
+
+| Method | Path | Operation | Source |
+|--------|------|-----------|--------|
+| `POST` | `/v1/admin/challenges/{slug}/pull` | `pull` | `app_admin.py:304-310` |
+| `POST` | `/v1/admin/challenges/{slug}/restart` | `restart` | `app_admin.py:312-318` |
+| `GET` | `/v1/admin/challenges/{slug}/status` | `status` | `app_admin.py:320-326` |
+
+All three return a `RuntimeOperationResponse` (`schemas/challenge.py:168-174`):
+
+| Field | Type |
+|-------|------|
+| `slug` | string |
+| `operation` | string |
+| `status` | string |
+| `detail` | string or null |
+
+```bash
+curl -s -X POST "$MASTER_URL/v1/admin/challenges/agent-challenge/restart" \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+## Internal service endpoints
+
+The following routes are **internal** — they run on separate service apps and are
+authenticated with per-challenge tokens, not the admin token. They are documented
+here for operators; they are not part of the public API.
+
+### Docker broker (internal)
+
+The Docker broker runs as its own app (`docker_broker.py:653-659`). Each request
+is authenticated with `Authorization: Bearer <broker token>` plus an
+`X-Platform-Challenge-Slug` header (`_authenticate`, `docker_broker.py:717-730`).
+
+| Method | Path | Request | Response | Source |
+|--------|------|---------|----------|--------|
+| `POST` | `/v1/docker/run` | `BrokerRunRequest` | `BrokerRunResponse` | `docker_broker.py:669-690` |
+| `POST` | `/v1/docker/cleanup` | `BrokerCleanupRequest` | `BrokerCleanupResponse` | `docker_broker.py:692-701` |
+| `POST` | `/v1/docker/list` | `BrokerListRequest` | `BrokerListResponse` | `docker_broker.py:703-712` |
+
+`POST /v1/docker/run` returns `429` when a workload quota is exceeded
+(`docker_broker.py:685-688`) and `400` on an executor error
+(`docker_broker.py:689-690`). `BrokerRunResponse` carries `container_name`,
+`stdout`, `stderr`, `returncode`, and `timed_out` (`schemas/docker_broker.py:51-56`);
+`BrokerCleanupResponse` carries `status` (`schemas/docker_broker.py:82-83`);
+`BrokerListResponse` carries `containers` (`schemas/docker_broker.py:74-75`).
+
+### Challenge weights collection (internal)
+
+The master collects per-challenge weights by calling each challenge's
+`GET /internal/v1/get_weights`, authenticated with the challenge's bearer token
+and an `X-Platform-Challenge-Slug` header (`challenge_client.py:31-36`). The
+challenge replies with a `ChallengeWeightsResponse`
+(`challenge_client.py:43`; see [Weights schema](/reference/weights-schema)).

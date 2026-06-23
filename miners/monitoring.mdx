@@ -1,0 +1,109 @@
+---
+title: "Monitoring & logs"
+description: "Track submission status, watch leaderboards, and check subnet health through the proxy."
+icon: "chart-line"
+---
+
+After you submit, you track progress through the same public proxy. The subnet exposes
+status reads, event streams, leaderboards, and health checks; the challenge owns the
+status and result endpoints behind the proxy (`docs/miner/README.md:125-135`).
+
+## Check submission status
+
+Read a submission's status through the bridge status route
+(`src/platform_network/master/app_proxy.py:514-518`):
+
+```bash
+curl -sf "$PROXY_URL/v1/challenges/{challenge_slug}/submissions/{submission_id}"
+```
+
+For Agent Challenge, the frontend status and event routes are
+(`docs/miner/README.md:44-51`):
+
+```http
+GET /challenges/agent-challenge/submissions/{id}/status
+GET /challenges/agent-challenge/submissions/{id}/events
+```
+
+## Submission lifecycle (Agent Challenge)
+
+An Agent Challenge submission moves through these public states
+(`docs/miner/README.md:68`):
+
+```text
+analysis_allowed -> waiting_miner_env -> tb_queued -> tb_running
+```
+
+At `waiting_miner_env` the submission pauses at the public state
+`Waiting for miner action`. You must save env vars or confirm none are needed, then launch
+(`docs/miner/README.md:66-97`). See [Submitting your work](/miners/submitting) for the env
+routes.
+
+## Watch the leaderboard
+
+List submissions and the leaderboard through the proxy
+(`docs/miner/README.md:50,62`):
+
+```bash
+curl -sf "$PROXY_URL/challenges/agent-challenge/submissions"
+curl -sf "$PROXY_URL/challenges/agent-challenge/leaderboard"
+```
+
+- `/challenges/agent-challenge/submissions` returns the latest `100` submissions,
+  newest-first (`docs/miner/README.md:62`).
+- `/challenges/agent-challenge/leaderboard` returns one best-scoring row per hotkey
+  (`docs/miner/README.md:62`).
+
+<Tip>
+Monitor the challenge leaderboard, not only the subnet layer
+(`docs/miner/README.md:159`). Your score is computed by the challenge; the subnet only
+normalizes the exported weight (`docs/miner/README.md:137-149`).
+</Tip>
+
+## Subnet health and registry
+
+The proxy serves health and the registry/weights reads
+(`README.md:423-426`):
+
+```bash
+curl -sf "$PROXY_URL/health"             # proxy health
+curl -sf "$PROXY_URL/v1/registry"        # active challenges
+curl -sf "$PROXY_URL/v1/weights/latest"  # latest normalized weights
+```
+
+| Endpoint | Returns | Source |
+|----------|---------|--------|
+| `/health` | proxy liveness `{"status":"ok"}` | `src/platform_network/master/app_proxy.py:320-322` |
+| `/v1/registry` | active challenge registry | `README.md:425` |
+| `/v1/weights/latest` | latest normalized weight vector | `README.md:426` |
+
+<Tip>
+The public proxy blocks `/internal/*`, `/health`, and `/version` on challenge routes, so
+those are not reachable as challenge paths (`docs/miner/README.md:64`,
+`src/platform_network/master/app_proxy.py:73,90-99`). The proxy's own top-level `/health`
+remains available (`src/platform_network/master/app_proxy.py:320-322`).
+</Tip>
+
+## Where to verify locally
+
+On a local single-node bring-up, the proxy is on host port `18080` and the broker on
+`18082` (`README.md:262-264`). The challenges are overlay-internal, so reach them through
+the proxy rather than a direct host port (`README.md:268-285`):
+
+```bash
+curl -sf http://127.0.0.1:18080/health
+curl -sf http://127.0.0.1:18080/challenges/prism/leaderboard
+curl -sf http://127.0.0.1:18080/challenges/agent-challenge/leaderboard
+```
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="wrench" href="/miners/troubleshooting">
+    Diagnose failed submissions.
+  </Card>
+  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
+    Review the upload protocol.
+  </Card>
+</CardGroup>
+</content>

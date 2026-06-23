@@ -1,0 +1,62 @@
+---
+title: "Weights API"
+description: "The public weights read on the subnet master: the aggregated, chain-ready weight vector for the subnet."
+icon: "scale-balanced"
+---
+
+The master computes and serves the aggregated weight vector for the subnet. This
+is a public read used by validators (`app_admin.py:136-157`).
+
+## `GET /v1/weights/latest`
+
+Returns the latest aggregated `MasterWeightsResponse` for the subnet. The master
+gathers active-challenge inputs and computes the response over the configured
+`netuid` and chain endpoint (`app_admin.py:144-151`).
+
+This is a public read (no `require_admin` dependency, `app_admin.py:136`).
+
+```bash
+curl -s "$MASTER_URL/v1/weights/latest"
+```
+
+**Response** — `MasterWeightsResponse` (`schemas/weights.py:33-42`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `netuid` | integer | Subnet id; `100` for BaseIntelligence (`config/settings.py:12`) |
+| `chain_endpoint` | string | Chain endpoint used for the computation (`schemas/weights.py:35`) |
+| `uids` | array of integer | UIDs in the weight vector (`schemas/weights.py:36`) |
+| `weights` | array of number | Weights aligned to `uids` (`schemas/weights.py:37`) |
+| `hotkey_weights` | object | Map of hotkey to weight (`schemas/weights.py:38`) |
+| `computed_at` | datetime | When the vector was computed (`schemas/weights.py:39`) |
+| `expires_at` | datetime | Freshness deadline; must be in the future (`schemas/weights.py:40`, `schemas/weights.py:44-48`) |
+| `source_challenges` | array | Per-challenge contributions, `ChallengeWeightsResult` (`schemas/weights.py:41`) |
+| `metagraph_updated_at` | datetime | When the metagraph snapshot was taken (`schemas/weights.py:42`) |
+
+Each entry in `source_challenges` is a `ChallengeWeightsResult`
+(`schemas/weights.py:19-24`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `slug` | string | Challenge slug (`schemas/weights.py:20`) |
+| `emission_percent` | number | Challenge emission share (`schemas/weights.py:21`) |
+| `weights` | object | Per-hotkey weights from the challenge (`schemas/weights.py:22`) |
+| `ok` | boolean | Whether collection succeeded; default `true` (`schemas/weights.py:23`) |
+| `error` | string or null | Error detail when `ok` is false (`schemas/weights.py:24`) |
+
+The full field-level schema, including the related `ChallengeWeightsResponse` and
+`FinalWeights` models, is on the [Weights schema](/reference/weights-schema) page.
+
+## Error responses
+
+| Status | When | Source |
+|--------|------|--------|
+| `503` | The master weight service is unavailable | `app_admin.py:138-142` |
+| `502` | Computation raised an unexpected error | `app_admin.py:154-157` |
+
+## Freshness
+
+The master weights freshness window is defined by
+`MASTER_WEIGHTS_FRESHNESS_SECONDS = 720` (`schemas/weights.py:8`). The
+`expires_at` field is validated to be in the future when the response is built
+(`schemas/weights.py:44-48`).

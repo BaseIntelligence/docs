@@ -1,0 +1,66 @@
+---
+title: "Install the validator"
+description: "Install the platform CLI with the bittensor extra needed to submit weights."
+---
+
+The validator ships as part of the `platform-network` package. Installing it
+gives you the `platform` CLI (`pyproject.toml:43`).
+
+## Requirements
+
+- Python **3.12 or newer** (`pyproject.toml:5`).
+- A Bittensor wallet (coldkey + hotkey) for signing on-chain submissions.
+
+## Install
+
+<Steps>
+  <Step title="Install with the validator extra">
+    The validator extra installs `bittensor>=9`, which is required to submit
+    weights (`pyproject.toml:40`).
+
+    ```bash
+    pip install 'platform-network[validator]'
+    ```
+  </Step>
+  <Step title="Confirm the bittensor extra">
+    Submitting weights needs the bittensor dependency. If it is missing, the
+    runtime raises a clear error telling you to install the extra
+    (`src/platform_network/bittensor/factory.py:27-28`):
+
+    ```bash
+    pip install 'platform-network[bittensor]'
+    ```
+  </Step>
+  <Step title="Verify the CLI">
+    Check that the `platform` command resolves.
+
+    ```bash
+    platform --help
+    ```
+  </Step>
+</Steps>
+
+## Validator node install (Docker Swarm)
+
+For the submit-only deployment used on the validator node, the supervisor venv
+provides the Python interpreter, and the wallet lives under
+`/var/lib/platform/wallets/<wallet_name>/hotkeys/<wallet_hotkey>`
+(`deploy/swarm/submitter/run_submitter.py:24-28`). See
+[The submitter](/validators/submitter) for that path.
+
+<Tip>
+The validator node holds the hotkey. Keep the private key off shared hosts and
+out of logs. The submitter logs only the public hotkey SS58 address
+(`deploy/swarm/submitter/run_submitter.py:65-87`).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Validator quickstart" icon="rocket" href="/validators/quickstart">
+    Configure and run in five steps.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/validators/configuration">
+    Fill out your validator config.
+  </Card>
+</CardGroup>

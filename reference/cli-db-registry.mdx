@@ -1,0 +1,88 @@
+---
+title: "DB & registry CLI"
+description: "platform db and platform registry commands: run database migrations, create revisions, and print the live challenge registry."
+icon: "database"
+---
+
+The `platform db` group manages the master database schema, and `platform registry` inspects the live registry served to validators. Their group help is `Database helpers` and `Registry helpers` respectively (`base/src/platform_network/cli_app/main.py:62-63`).
+
+## Database commands
+
+<Accordion title="platform db migrate — upgrade the schema to head">
+
+Applies all pending Alembic migrations, upgrading the master database to `head` (`base/src/platform_network/cli_app/main.py:922-927`). The runtime database URL comes from `database.url` in your config (`base/src/platform_network/cli_app/main.py:926-927`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:923` |
+
+```bash
+platform db migrate --config /etc/platform/master.yaml
+```
+
+The underlying helper upgrades to revision `head` by default (`base/src/platform_network/db/migrations.py:21-26`). A matching `downgrade` helper targets `-1` (one revision back) but is not exposed as a CLI command (`base/src/platform_network/db/migrations.py:29-34`).
+
+</Accordion>
+
+<Accordion title="platform db revision — autogenerate a migration">
+
+Generates a new Alembic revision with `autogenerate=True` from the current models (`base/src/platform_network/cli_app/main.py:930-940`).
+
+| Argument | Required | Source |
+|----------|----------|--------|
+| `message` | yes | `base/src/platform_network/cli_app/main.py:931` |
+
+```bash
+platform db revision "add challenge routes"
+```
+
+</Accordion>
+
+## Registry command
+
+<Accordion title="platform registry print — dump the live registry as JSON">
+
+Fetches the active challenge registry from `validator.registry_url` and prints it as indented JSON (`base/src/platform_network/cli_app/main.py:943-948`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/validator.example.yaml` | `base/src/platform_network/cli_app/main.py:944` |
+
+```bash
+platform registry print --config /etc/platform/validator.yaml
+```
+
+</Accordion>
+
+## Database tables
+
+The master schema is defined as SQLAlchemy models (`base/src/platform_network/db/models.py`). `platform db migrate` creates and maintains these tables.
+
+| Table | Purpose | Source |
+|-------|---------|--------|
+| `challenges` | Registered challenges and their lifecycle status, emission percent, version, and metadata. | `base/src/platform_network/db/models.py:58` |
+| `challenge_images` | Container image coordinates (registry, repository, tag, digest, pull policy) per challenge. | `base/src/platform_network/db/models.py:145` |
+| `challenge_auth` | Hashed auth and broker tokens for a challenge's internal endpoints. | `base/src/platform_network/db/models.py:172` |
+| `challenge_resources` | Named runtime resource values requested by a challenge. | `base/src/platform_network/db/models.py:201` |
+| `challenge_volumes` | Docker volume mounts requested by a challenge. | `base/src/platform_network/db/models.py:226` |
+| `challenge_secrets` | File secrets mounted into a challenge container. | `base/src/platform_network/db/models.py:252` |
+| `challenge_env` | Environment variable definitions (encrypted values, secret flag) for a challenge. | `base/src/platform_network/db/models.py:278` |
+| `challenge_capabilities` | Named capabilities advertised by a challenge. | `base/src/platform_network/db/models.py:304` |
+| `challenge_routes` | Public route prefixes exposed by a challenge through the proxy. | `base/src/platform_network/db/models.py:329` |
+| `challenge_health_events` | Historical health and version observations per challenge. | `base/src/platform_network/db/models.py:356` |
+| `miner_request_nonces` | Replay protection for signed miner uploads accepted by the proxy. | `base/src/platform_network/db/models.py:387` |
+
+### Challenge status values
+
+The `challenges.status` column uses the `ChallengeStatus` enum (`base/src/platform_network/db/models.py:30-36`).
+
+| Value | Source |
+|-------|--------|
+| `active` | `base/src/platform_network/db/models.py:33` |
+| `inactive` | `base/src/platform_network/db/models.py:34` |
+| `disabled` | `base/src/platform_network/db/models.py:35` |
+| `draft` | `base/src/platform_network/db/models.py:36` |
+
+<Tip>
+  New challenges default to `draft` and must be activated before validators evaluate them (`base/src/platform_network/db/models.py:78-79`). See the [Challenge CLI](/reference/cli-challenge) for `activate` / `deactivate`.
+</Tip>

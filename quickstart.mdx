@@ -1,47 +1,62 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "The shortest path to running the BaseIntelligence CLI and computing a weight vector without touching the chain."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This quickstart gets the canonical `base` repository running locally and computes a weight vector with the CLI, all in dry-run so nothing is submitted on-chain. It is the fastest way to confirm your environment works before you follow a full [role guide](/concepts/overview).
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+<Tip>
+  Want to mine, validate, or build an agent instead? Jump straight to the [miner](/miners/overview), [validator](/validators/overview), or [agent developer](/agents/overview) path. This page is the generic "run something" starting point.
+</Tip>
 
 ## Prerequisites
 
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- A Python runtime and the [`uv`](https://docs.astral.sh/uv/) package manager.
+- A clone of the canonical `base` repository.
 
 ## Get started
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Install dependencies">
+    From the repository root, sync the runtime and dev dependencies with `uv`.
 
     ```bash
-    npm install your-package
+    uv sync --extra dev --extra master
+    ```
+
+    The full local check (lint, types, tests) is documented alongside this command in the repository README.
+  </Step>
+  <Step title="Explore the CLI">
+    The subnet ships a single CLI. Its command groups are `master`, `validator`, `challenge`, `db`, and `registry`.
+
+    ```bash
+    uv run platform --help
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="Compute weights in dry-run">
+    Run one master epoch that computes a weight vector and prints how many UID weights it produced. With `--dry-run` (and without `--submit-on-chain`) nothing is written to Bittensor.
 
     ```bash
-    your-cli init
+    uv run platform master weights --once --dry-run
     ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
 
-    ```bash
-    your-cli start
-    ```
+    The command echoes `compute-only: computed <N> weights`. See [how it works](/concepts/how-it-works) for what that vector represents.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## What to do next
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<CardGroup cols={2}>
+  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
+    Follow a submission from a miner all the way to on-chain weights.
+  </Card>
+  <Card title="Wallets & registration" icon="wallet" href="/concepts/wallets-and-registration">
+    Set up the keys you need before you participate for real.
+  </Card>
+  <Card title="Choose a role" icon="signs-post" href="/concepts/overview">
+    Pick the miner, validator, or agent path that fits you.
+  </Card>
+  <Card title="Glossary" icon="list" href="/concepts/glossary">
+    Look up any term used across these docs.
+  </Card>
+</CardGroup>

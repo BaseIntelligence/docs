@@ -1,0 +1,67 @@
+---
+title: "How the subnet works"
+description: "Follow a unit of work end to end, from a miner's submission through challenge scoring to on-chain weights."
+---
+
+This page traces one unit of work through BaseIntelligence end to end. Read [What is BaseIntelligence?](/concepts/overview) first if you have not built a mental model yet.
+
+## The end-to-end flow
+
+<Steps>
+  <Step title="A miner picks a challenge and submits">
+    Each [challenge](/concepts/glossary#challenge) has a slug, such as `agent-challenge` or `prism`. The miner builds the artifact that challenge requires and submits it through the subnet's public entry point at `/challenges/{slug}/...`.
+  </Step>
+  <Step title="The challenge evaluates the work">
+    The challenge runs its own scoring logic in isolation and produces a raw [weight](/concepts/glossary#weights) per [hotkey](/concepts/glossary#hotkey). The subnet does not define the artifact format or the scoring rubric; each challenge owns that.
+  </Step>
+  <Step title="The subnet collects raw challenge weights">
+    At each [epoch](/concepts/glossary#epoch), the master reads every active challenge's raw hotkey weights through the protected weight contract.
+  </Step>
+  <Step title="The subnet normalizes and applies emissions">
+    The aggregator normalizes each challenge's weights, applies the configured per-challenge [emission](/concepts/glossary#emissions) share, and maps the surviving hotkeys to Bittensor [UIDs](/concepts/glossary#uid).
+  </Step>
+  <Step title="A validator submits the final vector on-chain">
+    The on-chain submitter fetches the master's final normalized vector and submits it to Bittensor for the configured netuid.
+  </Step>
+</Steps>
+
+## How rewards flow
+
+The subnet never sends a challenge's raw scores straight to Bittensor. The chain only sees the final, normalized vector. In sequence:
+
+1. The challenge evaluates miner work.
+2. The challenge exports raw hotkey weights.
+3. The subnet applies that challenge's emission share.
+4. The subnet normalizes across all active challenge outputs.
+5. The subnet maps hotkeys to Bittensor UIDs.
+6. Validators submit the final weights on-chain.
+
+A strong score in one challenge therefore contributes according to that challenge's configured emission share. See [weights and emissions](/concepts/weights-and-emissions) for the math.
+
+## The components that run it
+
+BaseIntelligence runs as a single Docker Swarm with two kinds of nodes:
+
+- **Manager node.** Hosts the single public API (one proxy), the broker, the supervisor, and the long-lived challenge services. The manager owns registry metadata, emission configuration, and final weight computation.
+- **Worker nodes.** Run short-lived CPU and GPU evaluation jobs dispatched by the broker.
+
+The single public API serves the registry read, the latest weights read, the health check, and the `/challenges/*` passthrough on one port.
+
+<Tip>
+  The on-chain submitter is separate from the manager. It is a minimal submit-only process on the validator node that reads the latest weights and submits them on-chain. It runs no challenge orchestration. See [miners and validators](/concepts/miners-and-validators).
+</Tip>
+
+## Where work is isolated
+
+Each challenge runs as its own service with its own image, its own database on a dedicated `/data` volume, and its own public routes behind the proxy. The subnet blocks internal challenge routes from the public surface. If one challenge fails, the subnet isolates its contribution rather than taking down the whole network.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Challenges explained" icon="trophy" href="/concepts/challenges">
+    What each challenge does and how they differ.
+  </Card>
+  <Card title="Weights & emissions" icon="scale-balanced" href="/concepts/weights-and-emissions">
+    How raw scores become one normalized vector.
+  </Card>
+</CardGroup>
