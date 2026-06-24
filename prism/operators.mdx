@@ -4,7 +4,7 @@ description: "Operator guide for PRISM: local validation, runtime configuration,
 icon: "server"
 ---
 
-This guide covers local validation and production-oriented configuration for running PRISM as a BaseIntelligence challenge.
+This guide covers local validation and production-oriented configuration for running PRISM as a BASE challenge.
 
 _Source: `docs/operators.md:1-5`._
 
@@ -62,7 +62,7 @@ Set `PRISM_PLATFORM_EVAL_IMAGE` to the evaluator image published for your deploy
 
 The scored run is single-node and uses `torchrun --standalone --nnodes=1 --nproc-per-node=1`.
 
-_Source: `docs/operators.md:34-50` (evaluator image literal omitted; it references a non-BaseIntelligence registry — supply your own)._
+_Source: `docs/operators.md:34-50` (evaluator image literal omitted; it references a non-BASE registry — supply your own)._
 
 ## Locked FineWeb-Edu data plane
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# qa-all.sh — run every BaseIntelligence docs QA gate in sequence.
+# qa-all.sh — run every BASE docs QA gate in sequence.
 # Static gates (forbidden, placeholder) run first (fast, offline-safe), then the
 # CLI gates (build, links). Prints a summary and exits non-zero if any gate fails.
 set -uo pipefail

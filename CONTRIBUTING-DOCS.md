@@ -1,4 +1,4 @@
-# Authoring conventions — BaseIntelligence docs
+# Authoring conventions — BASE docs
 
 Working note for everyone (humans + agents) writing pages in this repo. Keep it
 short; the QA gates in `scripts/` enforce the hard rules automatically.
@@ -23,8 +23,8 @@ Every factual/technical claim MUST be traceable to a pinned source in
 `SOURCES.md`. If you cannot cite a canonical source for a statement, **omit it** —
 do not guess, infer, or paraphrase from memory.
 
-- Canonical source of truth: **BaseIntelligence/`base`** (pinned SHA in `SOURCES.md`).
-- **Never** source content from `PlatformNetwork/*` or any non-BaseIntelligence org.
+- Canonical source of truth: **BASE/`base`** (pinned SHA in `SOURCES.md`).
+- **Never** source content from `PlatformNetwork/*` or any non-BASE org.
 - If a value is known but not yet confirmed against source, mark it with the
   approved `unverified` token (the only placeholder the gates allow) and open an
   item in `issues.md`. `TODO`/`FIXME`/`lorem` are forbidden.
@@ -59,7 +59,7 @@ Use these terms exactly; do not invent synonyms.
 | **miner** | Participant that produces work/responses. |
 | **validator** | Participant that scores miners and sets weights. |
 | **subnet** | The network instance. |
-| **netuid** | The subnet id. For BaseIntelligence this is **100**. |
+| **netuid** | The subnet id. For BASE this is **100**. |
 
 Network-specific facts (e.g. `netuid 100`) must match `SOURCES.md`.
 

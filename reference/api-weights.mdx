@@ -23,7 +23,7 @@ curl -s "$MASTER_URL/v1/weights/latest"
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `netuid` | integer | Subnet id; `100` for BaseIntelligence (`config/settings.py:12`) |
+| `netuid` | integer | Subnet id; `100` for BASE (`config/settings.py:12`) |
 | `chain_endpoint` | string | Chain endpoint used for the computation (`schemas/weights.py:35`) |
 | `uids` | array of integer | UIDs in the weight vector (`schemas/weights.py:36`) |
 | `weights` | array of number | Weights aligned to `uids` (`schemas/weights.py:37`) |

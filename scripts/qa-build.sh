@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# qa-build.sh — Mintlify build/schema gate for BaseIntelligence docs.
+# qa-build.sh — Mintlify build/schema gate for BASE docs.
 # Runs `mint validate` (strict: exits non-zero on warnings/errors). Installs the
 # CLI via `npm i -g mint`, or falls back to `npx mint`, if not present.
 # Idempotent + safe to re-run. Exits 0 on PASS, non-zero on FAIL.

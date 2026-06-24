@@ -4,7 +4,7 @@ description: "The PRISM service architecture: a FastAPI app, SQLite state, a wor
 icon: "gears"
 ---
 
-PRISM runs as a **FastAPI** application with **SQLite** state, internal BaseIntelligence authentication, and GPU evaluation through the Docker broker. The challenge owns the data and the evaluation; the validator re-executes the miner's training loop under a forced random init and computes the score itself.
+PRISM runs as a **FastAPI** application with **SQLite** state, internal BASE authentication, and GPU evaluation through the Docker broker. The challenge owns the data and the evaluation; the validator re-executes the miner's training loop under a forced random init and computes the score itself.
 
 _Source: `docs/architecture.md:1-7`._
 
@@ -12,7 +12,7 @@ _Source: `docs/architecture.md:1-7`._
 
 ```mermaid
 flowchart LR
-    Miner[Miner] --> Proxy[BaseIntelligence Proxy]
+    Miner[Miner] --> Proxy[BASE Proxy]
     Proxy --> Bridge[PRISM Bridge]
     Bridge --> DB[(SQLite)]
     Bridge --> Queue[Worker Queue]
@@ -44,7 +44,7 @@ _Source: `docs/architecture.md:27-37`._
 
 ## Subnet integration
 
-BaseIntelligence is responsible for miner-facing upload security. It verifies signatures, timestamps, nonces, and hotkey identity before forwarding a submission to PRISM.
+BASE is responsible for miner-facing upload security. It verifies signatures, timestamps, nonces, and hotkey identity before forwarding a submission to PRISM.
 
 PRISM receives verified submissions on the internal bridge route:
 

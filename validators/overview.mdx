@@ -1,9 +1,9 @@
 ---
-title: "Validating on BaseIntelligence"
-description: "What a validator does on the BaseIntelligence subnet and how the pieces fit together."
+title: "Validating on BASE"
+description: "What a validator does on the BASE subnet and how the pieces fit together."
 ---
 
-A validator scores miners and sets weights on the BaseIntelligence subnet
+A validator scores miners and sets weights on the BASE subnet
 (netuid **100**, `src/platform_network/config/settings.py:12`). It does not
 score work in isolation. The master computes the final weight vector from each
 challenge, and the validator's job is to fetch that vector and submit it

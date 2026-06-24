@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# qa-forbidden.sh — forbidden-string gate for BaseIntelligence docs.
+# qa-forbidden.sh — forbidden-string gate for BASE docs.
 # Scans the docs tree (excluding .git, node_modules, scripts/, and the meta
 # working-note files in QA_META_EXCLUDES — see _lib.sh) for:
-#   - PlatformNetwork (forbidden non-BaseIntelligence source/org)
+#   - PlatformNetwork (forbidden non-BASE source/org)
 #   - starter-kit greens 16a34a / 07c983 / 15803d (case-insensitive)
 #   - paid font argent-pixel / pjc8nxd
-#   - old/non-BaseIntelligence org URLs (github.com/PlatformNetwork, github.com/mintlify)
+#   - old/non-BASE org URLs (github.com/PlatformNetwork, github.com/mintlify)
 # The success green #b2ff22 is WHITELISTED and is NEVER reported.
 # Idempotent + safe to re-run. Exits 0 on PASS, non-zero if any forbidden string found.
 set -uo pipefail
@@ -16,7 +16,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_lib.sh"
 # Optional override of scan root (used by the fixture test). Defaults to docs root.
 SCAN_ROOT="${1:-$DOCS_ROOT}"
 
-# WHITELIST: the approved BaseIntelligence success green. Must NEVER be flagged.
+# WHITELIST: the approved BASE success green. Must NEVER be flagged.
 WHITELIST_GREEN="b2ff22"
 
 # Forbidden patterns (extended regex, case-insensitive). NOTE: none of these

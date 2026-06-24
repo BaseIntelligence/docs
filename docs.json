@@ -1,8 +1,8 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "BaseIntelligence",
-  "description": "Documentation for BaseIntelligence, the Bittensor subnet (netuid 100) for decentralized collaborative AI research through competitive challenges.",
+  "name": "BASE",
+  "description": "Documentation for BASE, the Bittensor subnet (netuid 100) for decentralized collaborative AI research through competitive challenges.",
   "colors": {
     "primary": "#d91f35",
     "light": "#d91f35",
@@ -27,13 +27,13 @@
     "indexing": "all",
     "metatags": {
       "og:type": "website",
-      "og:site_name": "BaseIntelligence",
-      "og:title": "BaseIntelligence Documentation",
-      "og:description": "Build, mine, validate, and compete on BaseIntelligence — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "og:site_name": "BASE",
+      "og:title": "BASE Documentation",
+      "og:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
       "og:image": "/images/og.png",
       "twitter:card": "summary_large_image",
-      "twitter:title": "BaseIntelligence Documentation",
-      "twitter:description": "Build, mine, validate, and compete on BaseIntelligence — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "twitter:title": "BASE Documentation",
+      "twitter:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
       "twitter:image": "/images/og.png"
     }
   },

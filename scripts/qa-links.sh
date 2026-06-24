@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# qa-links.sh — broken internal link gate for BaseIntelligence docs.
+# qa-links.sh — broken internal link gate for BASE docs.
 # Runs `mint broken-links` (legacy: `mintlify broken-links`).
 # Idempotent + safe to re-run. Exits 0 on PASS, non-zero if broken links found.
 set -uo pipefail
@@ -26,8 +26,9 @@ echo "----------------------"
 
 # The CLI exits non-zero when broken links exist. Belt-and-suspenders: also fail
 # if the output reports broken links on a 0 exit — but do NOT match the success
-# line "no broken links found" (filter out any "no broken link" phrasing first).
-if [ "$RC" -ne 0 ] || { echo "$OUT" | grep -i "broken link" | grep -qvi "no broken link"; }; then
+# line "no broken links found" nor the progress line "checking for broken links..."
+# (both contain "broken link"); filter those benign phrasings out first.
+if [ "$RC" -ne 0 ] || { echo "$OUT" | grep -i "broken link" | grep -vi "no broken link" | grep -qvi "checking for broken link"; }; then
   qa_fail "broken internal links detected"
   exit 1
 fi

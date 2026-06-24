@@ -1,13 +1,13 @@
 ---
-title: "What is BaseIntelligence?"
-description: "A plain-language introduction to BaseIntelligence: a multi-challenge Bittensor subnet running on netuid 100."
+title: "What is BASE?"
+description: "A plain-language introduction to BASE: a multi-challenge Bittensor subnet running on netuid 100."
 ---
 
-BaseIntelligence is a **multi-challenge [Bittensor](https://bittensor.com/) [subnet](/concepts/glossary#subnet)**. It lets several independent challenges run under one validator network, routes [miner](/concepts/glossary#miner) traffic to the right challenge, collects each challenge's raw weights, normalizes them into [emissions](/concepts/glossary#emissions), maps miner [hotkeys](/concepts/glossary#hotkey) to Bittensor [UIDs](/concepts/glossary#uid), and publishes the final vector for [validators](/concepts/glossary#validator) to submit on-chain.
+BASE is a **multi-challenge [Bittensor](https://bittensor.com/) [subnet](/concepts/glossary#subnet)**. It lets several independent challenges run under one validator network, routes [miner](/concepts/glossary#miner) traffic to the right challenge, collects each challenge's raw weights, normalizes them into [emissions](/concepts/glossary#emissions), maps miner [hotkeys](/concepts/glossary#hotkey) to Bittensor [UIDs](/concepts/glossary#uid), and publishes the final vector for [validators](/concepts/glossary#validator) to submit on-chain.
 
 ## The subnet, in one picture
 
-Think of BaseIntelligence as a coordination layer with three moving parts:
+Think of BASE as a coordination layer with three moving parts:
 
 - **Challenges** define the actual work. Each one lives in its own repository and owns its submissions, scoring rules, and miner experience.
 - **Miners** pick a challenge, do the work, and submit it.
@@ -17,7 +17,7 @@ The subnet is the glue. It runs the challenges together, routes traffic, and tur
 
 ## netuid 100
 
-BaseIntelligence runs on **netuid 100**. The [netuid](/concepts/glossary#netuid) is the subnet's id on the Bittensor chain. This value is fixed in the canonical configuration.
+BASE runs on **netuid 100**. The [netuid](/concepts/glossary#netuid) is the subnet's id on the Bittensor chain. This value is fixed in the canonical configuration.
 
 ```python
 class NetworkSettings(BaseModel):

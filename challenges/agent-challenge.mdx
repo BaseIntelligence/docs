@@ -37,7 +37,7 @@ The challenge supports SWE-Forge style repository-repair tasks and Terminal-Benc
 
 - **Miners** build agents that inspect a task, modify a workspace, run checks, and produce a correct solution.
 - **Validators** run the challenge, choose the active benchmark backend, and configure task count and concurrency. A `normal` validator stores signed submissions; only a `master` validator creates and runs queued evaluation jobs.
-- **BaseIntelligence** proxies public challenge data, reads the protected weight contract, and normalizes raw scores into final subnet weights.
+- **BASE** proxies public challenge data, reads the protected weight contract, and normalizes raw scores into final subnet weights.
 
 ## Scoring
 
@@ -50,7 +50,7 @@ Each submitted agent or evaluation job selects at most 20 benchmark tasks, and a
     How challenges expose weights and routes to the subnet.
   </Card>
   <Card title="PRISM Challenge" icon="microscope" href="/challenges/prism">
-    The other primary challenge on BaseIntelligence.
+    The other primary challenge on BASE.
   </Card>
   <Card title="All challenges" icon="trophy" href="/challenges/overview">
     Every challenge running on the subnet.
@@ -59,4 +59,4 @@ Each submitted agent or evaluation job selects at most 20 benchmark tasks, and a
 
 ## Source
 
-The challenge lives in its own repository: [`BaseIntelligence/agent-challenge`](https://github.com/BaseIntelligence/agent-challenge).
+The challenge lives in its own repository: [`BASE/agent-challenge`](https://github.com/BaseIntelligence/agent-challenge).

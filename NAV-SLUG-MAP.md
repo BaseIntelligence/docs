@@ -1,4 +1,4 @@
-# NAV-SLUG-MAP — BaseIntelligence docs (Wave 2 authoring contract)
+# NAV-SLUG-MAP — BASE docs (Wave 2 authoring contract)
 
 This file is the **binding contract** between Wave 1 (navigation IA, owned by Task
 T2 / `docs.json`) and Wave 2 (`.mdx` page authoring). Every `pages` slug declared
@@ -13,7 +13,7 @@ from.
 - **Source precedence:** `base` (canonical, package `platform_network`, netuid
   **100**) wins on every conflict. See `SOURCES.md`.
 - Never source from `PlatformNetwork/platform` (linked from baseagent README; it is
-  NOT BaseIntelligence).
+  NOT BASE).
 - Brand: acid red `#d91f35`; success `#b2ff22` only for true "success" semantics;
   body font Rethink Sans, code font Space Mono. No starter greens.
 - `index` and `quickstart` already exist in the starter — extend, do not recreate.
@@ -27,8 +27,8 @@ user** · **Operator/infra** · **Integrator**
 ## Tab: Overview
 | Slug | File | Title | Audience | Source repo |
 |------|------|-------|----------|-------------|
-| index | index.mdx | Welcome to BaseIntelligence | All | base (README), SOURCES.md |
-| concepts/overview | concepts/overview.mdx | What is BaseIntelligence? | All | base |
+| index | index.mdx | Welcome to BASE | All | base (README), SOURCES.md |
+| concepts/overview | concepts/overview.mdx | What is BASE? | All | base |
 | concepts/how-it-works | concepts/how-it-works.mdx | How the subnet works | All | base |
 | concepts/challenges | concepts/challenges.mdx | Challenges explained | All | base, agent-challenge, prism |
 | concepts/miners-and-validators | concepts/miners-and-validators.mdx | Miners & validators | All | base |
@@ -42,7 +42,7 @@ user** · **Operator/infra** · **Integrator**
 ## Tab: Miners
 | Slug | File | Title | Audience | Source repo |
 |------|------|-------|----------|-------------|
-| miners/overview | miners/overview.mdx | Mining on BaseIntelligence | Miner | base |
+| miners/overview | miners/overview.mdx | Mining on BASE | Miner | base |
 | miners/quickstart | miners/quickstart.mdx | Miner quickstart | Miner | base (miner CLI) |
 | miners/installation | miners/installation.mdx | Install the miner | Miner | base (deploy) |
 | miners/wallet-registration | miners/wallet-registration.mdx | Wallet & registration | Miner | base |
@@ -56,7 +56,7 @@ user** · **Operator/infra** · **Integrator**
 ## Tab: Validators
 | Slug | File | Title | Audience | Source repo |
 |------|------|-------|----------|-------------|
-| validators/overview | validators/overview.mdx | Validating on BaseIntelligence | Validator | base |
+| validators/overview | validators/overview.mdx | Validating on BASE | Validator | base |
 | validators/quickstart | validators/quickstart.mdx | Validator quickstart | Validator | base (validator CLI) |
 | validators/installation | validators/installation.mdx | Install the validator | Validator | base (deploy) |
 | validators/running | validators/running.mdx | Running a validator | Validator | base (validator) |
@@ -128,7 +128,7 @@ user** · **Operator/infra** · **Integrator**
 ## Tab: Challenges
 | Slug | File | Title | Audience | Source repo |
 |------|------|-------|----------|-------------|
-| challenges/overview | challenges/overview.mdx | Challenges on BaseIntelligence | All | base, SOURCES.md |
+| challenges/overview | challenges/overview.mdx | Challenges on BASE | All | base, SOURCES.md |
 | challenges/agent-challenge | challenges/agent-challenge.mdx | Agent Challenge | Agent dev | agent-challenge |
 | challenges/prism | challenges/prism.mdx | PRISM Challenge | PRISM user | prism |
 | challenges/bounty-challenge | challenges/bounty-challenge.mdx | Bounty Challenge | Agent dev | bounty-challenge (secondary/stub) |

@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# _lib.sh — shared helpers for BaseIntelligence docs QA gates.
+# _lib.sh — shared helpers for BASE docs QA gates.
 # Sourced by qa-*.sh. Not executable on its own.
 
 # Resolve the docs repo root = the parent dir of this scripts/ dir.

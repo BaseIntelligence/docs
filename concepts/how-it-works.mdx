@@ -3,7 +3,7 @@ title: "How the subnet works"
 description: "Follow a unit of work end to end, from a miner's submission through challenge scoring to on-chain weights."
 ---
 
-This page traces one unit of work through BaseIntelligence end to end. Read [What is BaseIntelligence?](/concepts/overview) first if you have not built a mental model yet.
+This page traces one unit of work through BASE end to end. Read [What is BASE?](/concepts/overview) first if you have not built a mental model yet.
 
 ## The end-to-end flow
 
@@ -40,7 +40,7 @@ A strong score in one challenge therefore contributes according to that challeng
 
 ## The components that run it
 
-BaseIntelligence runs as a single Docker Swarm with two kinds of nodes:
+BASE runs as a single Docker Swarm with two kinds of nodes:
 
 - **Manager node.** Hosts the single public API (one proxy), the broker, the supervisor, and the long-lived challenge services. The manager owns registry metadata, emission configuration, and final weight computation.
 - **Worker nodes.** Run short-lived CPU and GPU evaluation jobs dispatched by the broker.

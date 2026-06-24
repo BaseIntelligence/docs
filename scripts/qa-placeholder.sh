@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# qa-placeholder.sh — placeholder/incomplete-content gate for BaseIntelligence docs.
+# qa-placeholder.sh — placeholder/incomplete-content gate for BASE docs.
 # Scans the docs tree (excluding .git, node_modules, scripts/, and the meta
 # working-note files in QA_META_EXCLUDES — see _lib.sh) for placeholders:
 #   - TODO / FIXME / lorem (case-insensitive)
