@@ -1,0 +1,87 @@
+---
+title: "Configuration"
+description: "Every validator config field, its default, and where it comes from."
+---
+
+The validator reads a YAML config. Start from `config/validator.example.yaml`
+and edit the network and validator blocks. Defaults below come from
+`ValidatorSettings` and `NetworkSettings`
+(`src/platform_network/config/settings.py:10-52`).
+
+## Network block
+
+The network block sets identity and chain connection
+(`config/validator.example.yaml:1-8`,
+`src/platform_network/config/settings.py:10-17`):
+
+| Key | Default | Source |
+|-----|---------|--------|
+| `name` | `platform` | `settings.py:11`, `validator.example.yaml:2` |
+| `netuid` | `100` | `settings.py:12`, `validator.example.yaml:3` |
+| `chain_endpoint` | `null` | `settings.py:13`, `validator.example.yaml:4` |
+| `wallet_name` | `default` | `settings.py:14`, `validator.example.yaml:5` |
+| `wallet_hotkey` | `default` | `settings.py:15`, `validator.example.yaml:6` |
+| `wallet_path` | `null` | `settings.py:16`, `validator.example.yaml:7` |
+| `master_uid` | `0` | `settings.py:17`, `validator.example.yaml:8` |
+
+## Validator block
+
+The validator block controls the registry reconcile loop and the weight submit
+loop (`config/validator.example.yaml:15-22`,
+`src/platform_network/config/settings.py:41-52`):
+
+| Key | Default | Purpose | Source |
+|-----|---------|---------|--------|
+| `registry_url` | `https://chain.platform.network` | Registry the validator reads | `settings.py:42`, `validator.example.yaml:16` |
+| `registry_retry_seconds` | `15` | Reconcile retry interval | `settings.py:43`, `validator.example.yaml:17` |
+| `weights_url` | `null` | Weights source override | `settings.py:44`, `validator.example.yaml:18` |
+| `weights_interval_seconds` | `360` | Submit loop interval | `settings.py:45`, `validator.example.yaml:19` |
+| `weights_timeout_seconds` | `15.0` | Weights fetch timeout | `settings.py:46`, `validator.example.yaml:20` |
+| `weights_retries` | `3` | Weights fetch retries | `settings.py:47`, `validator.example.yaml:21` |
+| `weights_freshness_seconds` | `720` | Max vector age before skip | `settings.py:48`, `validator.example.yaml:22` |
+
+### Weights URL resolution
+
+`weights_url` defaults to `null`. When it is null, the validator fetches weights
+from `registry_url`. The `resolved_weights_url` property returns `weights_url`
+when set, otherwise `registry_url`
+(`src/platform_network/config/settings.py:50-52`).
+
+## Database block
+
+The validator config includes a database URL using the asyncpg driver
+(`config/validator.example.yaml:24-25`):
+
+```yaml
+database:
+  url: postgresql+asyncpg://platform:<password>@postgres.platform.svc.cluster.local/platform
+```
+
+## Observability block
+
+Logging defaults to JSON output (`config/validator.example.yaml:35-38`,
+`src/platform_network/config/settings.py:112-115`):
+
+| Key | Default | Source |
+|-----|---------|--------|
+| `log_json` | `true` | `settings.py:113`, `validator.example.yaml:36` |
+| `sentry_dsn` | `null` | `settings.py:114`, `validator.example.yaml:37` |
+| `otel_service_name` | `platform-validator` | `validator.example.yaml:38` |
+
+## Delegation instead of self-hosting
+
+If running the validator stack is too demanding, you can delegate validation
+power with Bittensor CHK / stake-weight check to the recommended validator
+hotkey, rather than running this stack yourself
+(`config/validator.example.yaml:10-13`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Running a validator" icon="play" href="/validators/running">
+    Apply the config and start the runtime.
+  </Card>
+  <Card title="Weight setting" icon="scale-balanced" href="/validators/weight-setting">
+    How the cadence values drive submissions.
+  </Card>
+</CardGroup>

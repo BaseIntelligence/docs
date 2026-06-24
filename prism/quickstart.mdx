@@ -1,0 +1,142 @@
+---
+title: "PRISM quickstart"
+description: "Build a valid two-script PRISM bundle, declare it with prism.yaml, and submit it for forced-init re-execution scoring."
+icon: "rocket"
+---
+
+This quickstart takes you from zero to a submitted PRISM bundle. PRISM scores how fast your model learns from scratch on locked FineWeb-Edu data, so the goal is a clean, deterministic two-script bundle that stays inside the sandbox and the parameter cap.
+
+## Prerequisites
+
+Before you begin, you need:
+
+- A registered miner **hotkey** on BASE (netuid **100**).
+- Python with `torch`, able to build a `torch.nn.Module` under the 150M parameter cap.
+- A two-script project: a model `architecture.py` and a training `training.py`.
+
+_Source: `src/prism_challenge/evaluator/interface.py:26` (150M cap); `docs/miner/README.md:1-18`._
+
+## Get started
+
+<Steps>
+  <Step title="Write architecture.py">
+    Expose a pure `build_model(ctx)` factory that returns a `torch.nn.Module`. It must not read data, open files, touch the network, or reference the dataset.
+
+    ```python
+    import torch
+
+    class TinyModel(torch.nn.Module):
+        def __init__(self, vocab_size):
+            super().__init__()
+            self.embedding = torch.nn.Embedding(vocab_size, 8)
+            self.linear = torch.nn.Linear(8, vocab_size)
+
+        def forward(self, tokens):
+            return self.linear(self.embedding(tokens))
+
+    def build_model(ctx):
+        return TinyModel(ctx.vocab_size)
+    ```
+
+    _Source: `docs/submissions.md:137-153`._
+  </Step>
+  <Step title="Write training.py">
+    Expose `train(ctx)` — the loop you own. Build the optimizer and schedule, read the locked train split from `ctx.data_dir`, tokenize, run the loop, handle multi-GPU, and write only under `ctx.artifacts_dir`.
+
+    ```python
+    from architecture import build_model
+
+    def train(ctx):
+        model = build_model(ctx)
+        # construct the optimizer/schedule, read ctx.data_dir, tokenize, run the loop,
+        # handle multi-GPU, and write only under ctx.artifacts_dir.
+        ...
+    ```
+
+    _Source: `docs/submissions.md:157-165`._
+  </Step>
+  <Step title="Declare prism.yaml (optional)">
+    Add a `prism.yaml` to declare the entrypoints and the tokenizer. When absent, PRISM uses the default entrypoints (`architecture.py`, `training.py`) and symbols (`build_model`, `train`).
+
+    ```yaml
+    architecture:
+      entrypoint: architecture.py
+    training:
+      entrypoint: training.py
+    tokenizer: gpt2
+    ```
+
+    _Source: `docs/submissions.md:43-49`; `examples/tiny-1m/prism.yaml:1-5`._
+  </Step>
+  <Step title="Bundle the project">
+    Package the scripts as a `.zip` (or directory snapshot). A minimal bundle:
+
+    ```text
+    project.zip
+      architecture.py
+      training.py
+      prism.yaml        # optional
+    ```
+
+    _Source: `docs/submissions.md:130-135`._
+  </Step>
+  <Step title="Submit">
+    Submit the bundle to the public route (when public submissions are enabled), or let the BASE proxy forward it in production.
+
+    ```http
+    POST /v1/submissions
+    Content-Type: application/json
+    ```
+
+    ```json
+    {
+      "filename": "project.zip",
+      "code": "<base64 zip payload>",
+      "metadata": {}
+    }
+    ```
+
+    _Source: `src/prism_challenge/routes.py:32-33`; `docs/miner/README.md:104-118`._
+  </Step>
+  <Step title="Track your score">
+    Poll the submission status and the leaderboard. `final_score` is the challenge-computed prequential bits-per-byte score (a lower bpb yields a higher `final_score`).
+
+    ```http
+    GET /v1/submissions/{submission_id}
+    GET /v1/leaderboard
+    ```
+
+    _Source: `src/prism_challenge/routes.py:70-103`._
+  </Step>
+</Steps>
+
+## What happens after you submit
+
+1. PRISM validates the two-script contract and runs the static AST sandbox.
+2. An OpenRouter LLM hard gate reviews both scripts and can reject before any GPU work.
+3. The validator re-executes your `training.py` under a forced random init on the locked train split.
+4. The challenge computes the prequential bits-per-byte score plus the held-out delta tie-breaker.
+5. Scores rank on the leaderboard and convert into normalized, dry-run weights.
+
+_Source: `README.md:34-42`._
+
+<Tip>
+Make your loop deterministic under the forced seed and correct at `world_size=1`. The scored run uses one physical GPU (`nproc=1`), so a loop that only works multi-GPU will not score. See [Constraints](/prism/constraints).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Submitting to PRISM" icon="upload" href="/prism/submit">
+    The three submit modes and full `prism.yaml` reference.
+  </Card>
+  <Card title="Providing context" icon="cube" href="/prism/context">
+    The `PrismContext` fields your scripts receive.
+  </Card>
+  <Card title="Examples" icon="code" href="/prism/examples">
+    A complete tiny two-script bundle.
+  </Card>
+  <Card title="Scoring" icon="chart-line" href="/prism/scoring">
+    How your bundle is scored and ranked.
+  </Card>
+</CardGroup>

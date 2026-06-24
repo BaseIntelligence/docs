@@ -1,0 +1,107 @@
+---
+title: "CLI overview"
+description: "The platform command: install, command groups, and the global config option shared by every subcommand."
+icon: "terminal"
+---
+
+Every node role on BASE is driven by one command-line tool. This page maps the full command tree and the conventions every subcommand shares. Each command group has its own reference page linked below.
+
+## The `platform` command
+
+The package `platform-network` installs a single console script named `platform` (`base/pyproject.toml:43`), wired to the Typer application in `base/src/platform_network/cli.py:1`. The root app's help string is `Platform Network multi-challenge subnet CLI` (`base/src/platform_network/cli_app/main.py:57`).
+
+Install the package, then call `platform`:
+
+```bash
+pip install platform-network
+platform --help
+```
+
+The optional extras `master`, `validator`, and `bittensor` pull in the Bittensor SDK needed for on-chain runtimes (`base/pyproject.toml:28-40`). Python 3.12 or newer is required (`base/pyproject.toml:5`).
+
+## Command groups
+
+The root app registers five command groups (`base/src/platform_network/cli_app/main.py:67-71`). The `master` group registers two nested subgroups, `challenges` and `worker` (`base/src/platform_network/cli_app/main.py:65-66`).
+
+| Group | Invocation | Purpose | Reference |
+|-------|------------|---------|-----------|
+| `master` | `platform master ...` | Run the control plane (proxy, broker, supervisor, weights) and manage Swarm workers and challenge records. | [Master CLI](/reference/cli-master) |
+| `validator` | `platform validator ...` | Run the normal validator runtime. | [Validator CLI](/reference/cli-validator) |
+| `challenge` | `platform challenge ...` | Scaffold and manage challenge records. | [Challenge CLI](/reference/cli-challenge) |
+| `db` | `platform db ...` | Apply and author database migrations. | [DB & registry CLI](/reference/cli-db-registry) |
+| `registry` | `platform registry ...` | Inspect the challenge registry a validator sees. | [DB & registry CLI](/reference/cli-db-registry) |
+
+Group help text, verbatim from source:
+
+| Group | Help string | Source |
+|-------|-------------|--------|
+| `master` | Run master components | `base/src/platform_network/cli_app/main.py:58` |
+| `master challenges` | Manage master challenge records | `base/src/platform_network/cli_app/main.py:59` |
+| `master worker` | Manage Swarm workers (CPU/GPU job nodes) | `base/src/platform_network/cli_app/main.py:64` |
+| `validator` | Run normal validator components | `base/src/platform_network/cli_app/main.py:60` |
+| `challenge` | Manage and scaffold challenges | `base/src/platform_network/cli_app/main.py:61` |
+| `db` | Database helpers | `base/src/platform_network/cli_app/main.py:62` |
+| `registry` | Registry helpers | `base/src/platform_network/cli_app/main.py:63` |
+
+## The global `--config` option
+
+Most commands take a single `--config` option pointing at a YAML settings file. The defaults differ by role:
+
+- Master-side and challenge-admin commands default to `config/master.example.yaml`. Example: `platform master proxy` (`base/src/platform_network/cli_app/main.py:526`).
+- Validator-side commands default to `config/validator.example.yaml`. Example: `platform validator run` (`base/src/platform_network/cli_app/main.py:835`) and `platform registry print` (`base/src/platform_network/cli_app/main.py:944`).
+
+The file is loaded by `load_settings()`, which reads the YAML mapping and then overlays environment variables (`base/src/platform_network/config/loader.py:37-47`). A missing file raises an error rather than falling back to defaults (`base/src/platform_network/config/loader.py:41-42`). See [Configuration overview](/reference/configuration) for the loading model and [Settings reference](/reference/settings) for every key.
+
+```bash
+platform master proxy --config /etc/platform/master.yaml
+platform validator run --config /etc/platform/validator.yaml
+```
+
+## Full command tree
+
+<Accordion title="Every command and its group">
+
+- `platform master`
+  - `proxy` — run the public proxy + admin/registry API (`base/src/platform_network/cli_app/main.py:525-526`)
+  - `broker` — run the Docker broker API (`base/src/platform_network/cli_app/main.py:574-575`)
+  - `supervisor` — run the Swarm control-plane supervisor (`base/src/platform_network/cli_app/main.py:621-622`)
+  - `refresh-challenge-images` — re-pin challenge images to current digests (`base/src/platform_network/cli_app/main.py:717-721`)
+  - `weights` — compute (and optionally submit) master weights (`base/src/platform_network/cli_app/main.py:784-794`)
+  - `challenges seed-prism` — seed/update the PRISM and Agent Challenge records (`base/src/platform_network/cli_app/main.py:765-768`)
+  - `worker token` — print a `docker swarm join` command (`base/src/platform_network/cli_app/main.py:652-657`)
+  - `worker list` — list Swarm nodes (`base/src/platform_network/cli_app/main.py:667-669`)
+  - `worker label` — label a node cpu/gpu (`base/src/platform_network/cli_app/main.py:673-678`)
+  - `worker drain` — drain or reactivate a node (`base/src/platform_network/cli_app/main.py:686-693`)
+  - `worker rm` — remove a node (`base/src/platform_network/cli_app/main.py:698-703`)
+  - `worker inspect` — inspect a node (`base/src/platform_network/cli_app/main.py:711-713`)
+- `platform validator`
+  - `run` — run the normal validator runtime (`base/src/platform_network/cli_app/main.py:834-835`)
+- `platform challenge`
+  - `create` — scaffold a challenge template (`base/src/platform_network/cli_app/main.py:857-865`)
+  - `register` — register a challenge via the admin API (`base/src/platform_network/cli_app/main.py:873-880`)
+  - `activate` — activate a challenge (`base/src/platform_network/cli_app/main.py:894-897`)
+  - `deactivate` — deactivate a challenge (`base/src/platform_network/cli_app/main.py:901-904`)
+  - `pull` — pull a challenge image (`base/src/platform_network/cli_app/main.py:908-911`)
+  - `restart` — restart a challenge (`base/src/platform_network/cli_app/main.py:915-918`)
+- `platform db`
+  - `migrate` — upgrade the master database (`base/src/platform_network/cli_app/main.py:922-923`)
+  - `revision` — autogenerate an Alembic revision (`base/src/platform_network/cli_app/main.py:930-931`)
+- `platform registry`
+  - `print` — fetch and print the registry as JSON (`base/src/platform_network/cli_app/main.py:943-944`)
+
+</Accordion>
+
+<Tip>
+  Run `platform <group> --help` or `platform <group> <command> --help` to see Typer's generated usage for any command. The tables on the per-group reference pages list every option, its default, and the source line that defines it.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="System architecture" icon="sitemap" href="/architecture/overview">
+    How the master, validators, and challenges fit together.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/reference/configuration">
+    How every `platform` command loads and merges its settings.
+  </Card>
+</CardGroup>

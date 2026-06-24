@@ -1,0 +1,61 @@
+---
+title: "Glossary"
+description: "Definitions of the core BASE and Bittensor terms used throughout these docs."
+---
+
+The terms you will meet across the BASE docs, defined once. Where a term has a fixed value or behavior in the canonical subnet, the value is noted.
+
+### Subnet
+
+A subnet is a single network instance on Bittensor. BASE is one subnet that runs multiple [challenges](#challenge) under one [validator](#validator) network. See [what is BASE?](/concepts/overview).
+
+### netuid
+
+The netuid is the subnet's id on the Bittensor chain. For BASE it is **100**. You set this value wherever you point a wallet, submitter, or validator at the subnet.
+
+### Challenge
+
+A challenge is an independent repository and Docker image that defines a specific competition: its own submissions, scoring logic, database, and public routes. Challenges expose a standard internal weight contract to the subnet. See [challenges explained](/concepts/challenges).
+
+### Miner
+
+A miner is a participant that produces work. A miner picks a [challenge](#challenge), follows that challenge's submission contract, and earns when the challenge exports a raw [weight](#weights) for the miner's [hotkey](#hotkey). See [miners and validators](/concepts/miners-and-validators).
+
+### Validator
+
+A validator is a participant that publishes the final scores on-chain. On BASE a normal validator runs the submit-only on-chain submitter: it reads the master's final normalized vector and submits it to Bittensor. It runs no challenge orchestration. See [running a validator](/validators/overview).
+
+### Weights
+
+Weights are the scores assigned to miners. Each challenge computes raw per-[hotkey](#hotkey) weights; the subnet normalizes them, applies [emissions](#emissions), and maps them to [UIDs](#uid) to form the vector submitted on-chain. See [weights and emissions](/concepts/weights-and-emissions).
+
+### Emissions
+
+Emissions describe how influence is split across challenges, and ultimately how tokens are distributed to participants. Each active challenge carries an emission share; the subnet normalizes those shares across active challenges before combining scores. See [the incentive mechanism](/concepts/incentive-mechanism).
+
+### UID
+
+A UID is a neuron's unique slot id within the subnet. The subnet maps miner [hotkeys](#hotkey) to UIDs when building the final weight vector. A hotkey with no known UID, and UID `0`, are skipped during aggregation.
+
+### Hotkey
+
+A hotkey is the operational signing key. Miners sign submissions with their hotkey, and the validator submitter needs exactly one secret: the validator hotkey. In the canonical settings the wallet hotkey defaults to `default`.
+
+### Coldkey
+
+A coldkey is the custody and ownership key. It holds funds and ownership and stays off operational nodes. The validator submitter guidance is explicit: never place coldkey material on the node, in logs, or in evidence files; copy only the [hotkey](#hotkey). See [wallets and registration](/concepts/wallets-and-registration).
+
+### Epoch
+
+An epoch is the recurring interval on which the subnet recomputes and republishes weights. The master runs a weight epoch on a fixed interval (`epoch_interval_seconds`, default `360`), and the validator submitter polls and submits on its own interval. The on-chain submitter publishes the final vector at these boundaries. See the [weights pipeline](/architecture/weights-pipeline).
+
+## Keep reading
+
+<CardGroup cols={2}>
+  <Card title="What is BASE?" icon="circle-info" href="/concepts/overview">
+    The concepts these terms describe, in context.
+  </Card>
+  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
+    See the terms used in the end-to-end flow.
+  </Card>
+</CardGroup>

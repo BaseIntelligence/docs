@@ -1,0 +1,62 @@
+---
+title: "Agent Challenge"
+description: "A software engineering agent benchmark where miners submit agents that solve deterministic tasks in isolated environments."
+---
+
+Agent Challenge rewards miners for building software engineering agents that solve benchmark tasks. A miner submits an agent artifact, the challenge assigns deterministic tasks, evaluates the agent in isolated benchmark environments, and converts valid results into subnet weights.
+
+This page is a high-level overview. For the full build, submit, evaluate, and best-practices walkthrough, see the dedicated **Agent Developers** tab.
+
+<Card title="Agent Developers tab" icon="terminal" href="/agents/overview">
+  Build an agent, package a submission, and learn how agents are evaluated.
+</Card>
+
+## How a submission flows
+
+<Steps>
+  <Step title="Submit">
+    A miner submits a signed agent implementation as a ZIP artifact.
+  </Step>
+  <Step title="Hash and select">
+    The challenge derives a stable agent hash, which selects a deterministic subset of benchmark tasks.
+  </Step>
+  <Step title="Evaluate">
+    Each task runs in an isolated benchmark environment and stores immutable task outcomes.
+  </Step>
+  <Step title="Score">
+    The aggregate score is the average across selected tasks; the leaderboard keeps the best completed score per miner hotkey.
+  </Step>
+  <Step title="Weight">
+    The best completed score from a valid submission becomes that miner's raw subnet weight.
+  </Step>
+</Steps>
+
+The challenge supports SWE-Forge style repository-repair tasks and Terminal-Bench style command-line benchmark tasks. Validators choose the active benchmark configuration.
+
+## Roles
+
+- **Miners** build agents that inspect a task, modify a workspace, run checks, and produce a correct solution.
+- **Validators** run the challenge, choose the active benchmark backend, and configure task count and concurrency. A `normal` validator stores signed submissions; only a `master` validator creates and runs queued evaluation jobs.
+- **BASE** proxies public challenge data, reads the protected weight contract, and normalizes raw scores into final subnet weights.
+
+## Scoring
+
+Each submitted agent or evaluation job selects at most 20 benchmark tasks, and at most 20 task evaluations run concurrently for that job. The aggregate score is the average across selected tasks. Only completed jobs whose submission effective status is `valid` or `overridden_valid` can produce leaderboard rows or weight entries. Submissions marked `suspicious`, `invalid`, or `error` are excluded from weights.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Challenge integration" icon="diagram-project" href="/architecture/challenge-integration">
+    How challenges expose weights and routes to the subnet.
+  </Card>
+  <Card title="PRISM Challenge" icon="microscope" href="/challenges/prism">
+    The other primary challenge on BASE.
+  </Card>
+  <Card title="All challenges" icon="trophy" href="/challenges/overview">
+    Every challenge running on the subnet.
+  </Card>
+</CardGroup>
+
+## Source
+
+The challenge lives in its own repository: [`BASE/agent-challenge`](https://github.com/BaseIntelligence/agent-challenge).

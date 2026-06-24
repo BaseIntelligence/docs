@@ -1,0 +1,35 @@
+/*
+ * BASE — custom styling
+ *
+ * WHY THIS FILE EXISTS:
+ * The Mintlify `docs.json` `fonts` schema only supports body/heading font
+ * families (additionalProperties: false — there is NO monospace/code key).
+ * Task T2 requires the code/mono font to be "Space Mono". Mintlify auto-loads
+ * any CSS file in the docs repo and exposes a `code-block` element selector,
+ * so the brand mono font is wired here rather than via an unsupported (invented)
+ * docs.json key. Body font (Rethink Sans) is set in docs.json `fonts.family`.
+ *
+ * Brand source of truth:
+ *   /projects/platform-network/frontend/tailwind.config.ts (mono: "Space Mono")
+ *   /projects/platform-network/frontend/src/app/globals.css (Google Fonts import)
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+
+:root {
+  --bi-font-mono: "Space Mono", ui-monospace, "Menlo", "SFMono-Regular", "Consolas", monospace;
+}
+
+/* Inline code, code blocks, and code groups use the brand mono font. */
+code,
+pre,
+kbd,
+samp,
+code-block,
+code-block code,
+code-block pre,
+code-group,
+code-group code,
+code-group pre {
+  font-family: var(--bi-font-mono);
+}

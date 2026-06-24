@@ -1,0 +1,67 @@
+---
+title: "Challenge SDK"
+description: "The shared challenge-side SDK that generated challenges use for evaluation, config, and weights."
+---
+
+The challenge SDK is the shared challenge-side toolkit that generated challenges import. It lives in the `platform_network.challenge_sdk` package and centers on running evaluation containers securely and reading challenge configuration from the environment.
+
+## What the SDK exports
+
+The package exposes a secure Docker executor and its supporting types:
+
+```python
+from platform_network.challenge_sdk import (
+    DockerExecutor,
+    DockerExecutorSettings,
+    DockerExecutorError,
+    DockerLimits,
+    DockerMount,
+    DockerRunResult,
+    DockerRunSpec,
+)
+```
+
+- `DockerExecutor` is a secure Docker CLI executor for challenge-side evaluation containers.
+- `DockerRunSpec`, `DockerMount`, and `DockerLimits` describe a run: the image, mounts, and resource limits.
+- `DockerRunResult` captures the outcome, and `DockerExecutorError` is raised when a container cannot be executed safely.
+
+## Configuration
+
+`DockerExecutorSettings` reads environment-backed settings with the `CHALLENGE_` prefix, so a challenge configures its executor without code changes:
+
+| Setting | Env var | Default |
+|---------|---------|---------|
+| Docker enabled | `CHALLENGE_DOCKER_ENABLED` | `false` |
+| Network mode | `CHALLENGE_DOCKER_NETWORK` | `none` |
+| CPUs | `CHALLENGE_DOCKER_CPUS` | `2.0` |
+| Memory | `CHALLENGE_DOCKER_MEMORY` | `4g` |
+| PIDs limit | `CHALLENGE_DOCKER_PIDS_LIMIT` | `512` |
+| Read-only rootfs | `CHALLENGE_DOCKER_READ_ONLY` | `true` |
+| Backend | `CHALLENGE_DOCKER_BACKEND` | `cli` |
+
+The defaults are deliberately locked down: evaluation containers run with no network and a read-only root filesystem unless a challenge opts out.
+
+## Cross-node mount transport
+
+A broker eval job may be scheduled on a different Swarm node than the broker process. GPU jobs land on the GPU worker while the broker runs on the manager, so a host bind-mount materialized on the broker node does not exist on the worker.
+
+The SDK's mount transport moves mount content across nodes without any shared filesystem, using only channels Swarm already distributes (environment and argv) and collects (`docker service logs`). Inbound mount content rides in chunked, base64 gzip-tar environment variables and is extracted into a node-local tmpfs by a bootstrap wrapper; writable mounts are tarred back to stdout between unique sentinels and decoded by the executor. Non-regular tar members such as symlinks are dropped so a mount archive cannot resolve to an attacker-chosen path.
+
+## How it relates to a challenge
+
+Generated challenges combine the SDK executor with the weight contract and database helpers described in [Creating a challenge](/challenges/creating). For a worked example of an SDK-driven challenge that runs evaluation containers through the broker, the Agent Challenge worker uses this execution substrate; see the [Agent Challenge overview](/challenges/agent-challenge).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Broker" icon="diagram-project" href="/architecture/broker">
+    The Docker broker that dispatches SDK evaluation jobs.
+  </Card>
+  <Card title="Swarm" icon="server" href="/architecture/swarm">
+    How eval jobs are scheduled across CPU and GPU nodes.
+  </Card>
+</CardGroup>
+
+---
+
+Sources: `base/src/platform_network/challenge_sdk/__init__.py:1` (exports), `base/src/platform_network/challenge_sdk/config.py:8` (`DockerExecutorSettings`, `CHALLENGE_` prefix and defaults), `base/src/platform_network/challenge_sdk/executors/docker.py:1` (secure Docker CLI executor), `base/src/platform_network/challenge_sdk/mount_transport.py:1` (cross-node mount transport), `agent-challenge/README.md:262` (own_runner backend uses the broker execution substrate).

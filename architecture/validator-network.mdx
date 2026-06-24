@@ -1,0 +1,108 @@
+---
+title: "Validator network"
+description: "How validators participate: a submit-only on-chain process that fetches the master's final weight vector and posts it to Bittensor."
+icon: "shield-halved"
+---
+
+Validators on the subnet run one thing: a **submit-only on-chain submitter**. It
+fetches the master's final, normalized weight vector over HTTP and submits it to
+Bittensor with the validator hotkey. It runs no challenge orchestration — all
+challenge services live on the master node.
+
+_Source: `README.md:153-156`; `docs/architecture.md:53-55`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The submit-only submitter, the weights client, and the validator settings.
+</Card>
+
+## What the submitter does
+
+The submitter is a minimal process on the validator node. Every
+`weights_interval_seconds` it reads `/v1/weights/latest` from the master, submits the
+fetched vector on-chain, and keeps retrying if the master is unavailable.
+
+_Source: `docs/architecture.md:53-55`; `deploy/swarm/submitter/run_submitter.py:1-16`._
+
+It deliberately does **not** run the challenge reconcile loop or open the
+control-plane database — those belong to the master, not the submitter.
+
+_Source: `deploy/swarm/submitter/run_submitter.py:8-17`._
+
+## The submit loop
+
+Each iteration inlines three operations: fetch the latest master vector, validate the
+payload, then call `set_weights`.
+
+```python
+payload = await runner.weights_client.fetch_latest()
+failure = runner._validate_weights_payload(payload)
+if failure is not None:
+    return
+result = runner.weight_setter.set_weights(payload.uids, payload.weights)
+```
+
+_Source: `deploy/swarm/submitter/run_submitter.py:112-144`._
+
+The weights client is pointed at the resolved weights URL, with the configured
+timeout and retry count.
+
+_Source: `deploy/swarm/submitter/run_submitter.py:161-169`; `src/platform_network/config/settings.py:42-52`._
+
+## Configuration
+
+| Setting | Default | Source |
+|---------|---------|--------|
+| `netuid` | `100` | `src/platform_network/config/settings.py:12` |
+| `validator.registry_url` | `https://chain.platform.network` | `src/platform_network/config/settings.py:42` |
+| `validator.weights_interval_seconds` | `360` | `src/platform_network/config/settings.py:45` |
+| `validator.weights_timeout_seconds` | `15.0` | `src/platform_network/config/settings.py:46` |
+| `validator.weights_retries` | `3` | `src/platform_network/config/settings.py:47` |
+| `validator.weights_freshness_seconds` | `720` | `src/platform_network/config/settings.py:48` |
+
+The effective weights URL is `weights_url` when set, otherwise the `registry_url`.
+
+_Source: `src/platform_network/config/settings.py:50-52`._
+
+The reference submitter config points `weights_url` at `https://chain.platform.network`,
+the public master endpoint.
+
+_Source: `deploy/swarm/submitter/submitter.yaml:42-43`._
+
+## Identity and safety
+
+At startup the submitter logs its target and the **public** validator hotkey SS58
+address so an operator can confirm the submitting identity. It never logs the private
+key or any secret. A `SIGTERM`/`SIGINT` cancels at the next sleep point, so an
+in-flight `set_weights` completes fully and the stop never leaves a half-submitted
+state.
+
+_Source: `deploy/swarm/submitter/run_submitter.py:30-33`, `deploy/swarm/submitter/run_submitter.py:65-86`, `deploy/swarm/submitter/run_submitter.py:192-203`._
+
+## Installation
+
+The submitter is a single systemd-managed service on the validator node. It needs
+only the validator hotkey.
+
+_Source: `README.md:398-409`._
+
+<Tip>
+The vector the submitter posts is produced entirely by the master — see the
+[Weights pipeline](/architecture/weights-pipeline) for how it is computed, and the
+[Weights API](/reference/api-weights) for the response schema.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Architecture overview" icon="sitemap" href="/architecture/overview">
+    Where the validator sits in the subnet.
+  </Card>
+  <Card title="Master node" icon="server" href="/architecture/master">
+    The node that computes and serves the vector.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`).

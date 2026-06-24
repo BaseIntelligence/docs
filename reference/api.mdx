@@ -1,0 +1,89 @@
+---
+title: "API overview"
+description: "The public HTTP API exposed by the BASE subnet master, plus its authentication models."
+icon: "plug"
+---
+
+The subnet master exposes a single public HTTP API. It serves three kinds of
+routes on one port: the **proxy** routes that bridge miner traffic to active
+challenges, the public **registry** and **weights** reads that validators
+consume, and a token-gated **admin** surface for operators.
+
+The proxy app is created by `create_proxy_app` and, when an operator wires a
+runtime controller into it, the admin/registry router is mounted on the same app
+so everything is served on one port (`app_proxy.py:263`, `app_proxy.py:534-548`).
+
+## Endpoint map
+
+| Method | Path | Auth | Page |
+|--------|------|------|------|
+| `GET` | `/health` | none | below |
+| `POST` | `/v1/challenges/{challenge_name}/submissions` | miner signature | [Upload protocol](/reference/upload-protocol) |
+| `GET` | `/v1/challenges/{challenge_name}/submissions/{submission_id}` | none | [Proxy API](/reference/api-proxy) |
+| `GET` | `/challenges/{slug}` and `/challenges/{slug}/{path}` | passthrough | [Proxy API](/reference/api-proxy) |
+| `GET` | `/v1/registry` | none (public read) | [Proxy API](/reference/api-proxy) |
+| `GET` | `/v1/weights/latest` | none (public read) | [Weights API](/reference/api-weights) |
+| `GET` | `/v1/challenges/dashboard.svg` | none (public read) | [Proxy API](/reference/api-proxy) |
+| `GET` | `/admin`, `/admin/challenges` | admin token | [Admin API](/reference/api-admin) |
+| `POST`/`PATCH`/`GET` | `/v1/admin/challenges/*` | admin token | [Admin API](/reference/api-admin) |
+
+Routes confirmed at: `/health` (`app_proxy.py:320`), submissions upload
+(`app_proxy.py:510`), submission status (`app_proxy.py:514`), proxy passthrough
+(`app_proxy.py:520`, `app_proxy.py:527`), `/v1/registry` (`app_admin.py:132`),
+`/v1/weights/latest` (`app_admin.py:136`), `/v1/challenges/dashboard.svg`
+(`app_admin.py:165`), admin pages (`app_admin.py:176`, `app_admin.py:186`), and
+the `/v1/admin/challenges/*` management routes (`app_admin.py:202`–`app_admin.py:326`).
+
+## Authentication models
+
+There are two distinct auth models on the public API, plus internal tokens used
+only between the master and its containers.
+
+### Miner request signing
+
+The signed upload route requires four request headers — `X-Hotkey`,
+`X-Signature`, `X-Nonce`, and `X-Timestamp` — which are verified against a
+canonical message before the request is bridged to the challenge
+(`miner_auth.py:159-162`, `miner_auth.py:96-111`). See
+[Upload protocol](/reference/upload-protocol) for the full signing scheme.
+
+### Admin token
+
+Management routes depend on `require_admin`, which accepts the token either in an
+`X-Admin-Token` header or as an `Authorization: Bearer <token>` credential, and
+compares it in constant time (`app_admin.py:121-130`, `auth.py:28-29`). The
+expected token is loaded from the `ADMIN_TOKEN` environment variable, or from the
+file named by `ADMIN_TOKEN_FILE` (`auth.py:10-18`). A mismatch returns
+`401 Unauthorized` (`app_admin.py:127-130`). See [Admin API](/reference/api-admin).
+
+### Public reads
+
+`/v1/registry`, `/v1/weights/latest`, and `/v1/challenges/dashboard.svg` are
+registered without the `require_admin` dependency, so they are readable without a
+token (`app_admin.py:132-174`).
+
+## Health check
+
+```bash
+curl -s "$MASTER_URL/health"
+```
+
+Returns `{"status": "ok"}` (`app_proxy.py:320-322`). `$MASTER_URL` is the base
+URL of the subnet master in your deployment.
+
+<Tip>
+This API covers the subnet master, proxy, weights, and upload surfaces. Challenge
+applications expose their own routes through the proxy; PRISM's API is documented
+separately in the PRISM tab.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master architecture" icon="server" href="/architecture/master">
+    The control plane that exposes this public API.
+  </Card>
+  <Card title="System overview" icon="sitemap" href="/architecture/overview">
+    Where the proxy sits in the subnet topology.
+  </Card>
+</CardGroup>

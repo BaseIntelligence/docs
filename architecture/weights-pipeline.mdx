@@ -1,0 +1,194 @@
+---
+title: "Weights pipeline"
+description: "The epoch weight flow: how the master collects raw challenge weights, normalizes emissions, maps hotkeys to Bittensor UIDs, and publishes the vector the submitter posts on-chain."
+icon: "scale-balanced"
+---
+
+Every epoch the master turns each challenge's raw hotkey scores into a single,
+chain-ready weight vector. This page traces that flow end to end, from the per-epoch
+trigger to the on-chain `set_weights` call.
+
+_Source: `README.md:127-135`; `src/platform_network/master/service.py:85-139`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The weight aggregator, master weight service, and the submit-only on-chain
+  submitter.
+</Card>
+
+## The flow at a glance
+
+epoch → master collects raw challenge weights → normalize each challenge → normalize
+emissions → combine into per-hotkey scores → map miner hotkeys to Bittensor UIDs →
+normalize the UID vector → publish at `/v1/weights/latest` → the on-chain submitter
+posts it to the chain.
+
+_Source: `src/platform_network/master/service.py:85-139`; `src/platform_network/master/aggregator.py:37-73`._
+
+```mermaid
+flowchart TB
+    epoch(["Epoch boundary"]) --> collect["1 · Collect raw challenge weights"]
+    collect --> normch["2 · Normalize each challenge's weights"]
+    normch --> normem["3 · Normalize emissions"]
+    normem --> combine["4 · Combine into per-hotkey scores"]
+    combine --> mapuid["5 · Map miner hotkeys to Bittensor UIDs<br/>(drop no-UID; exclude UID 0)"]
+    mapuid --> normuid["6 · Normalize the UID vector"]
+    normuid --> publish["7 · Publish at /v1/weights/latest"]
+    publish --> submit["8 · On-chain submitter posts set_weights"]
+    submit --> chain(["Bittensor chain"])
+```
+
+## 1. Collect raw challenge weights
+
+The master resolves the active challenges and their per-challenge tokens, then asks
+each challenge for its weights over the internal contract. A challenge that fails to
+return weights raises and is surfaced as a failure for that epoch.
+
+_Source: `src/platform_network/master/service.py:30-39`, `src/platform_network/master/service.py:63-83`._
+
+Each challenge implements the standard contract — an async `get_weights()` returning
+a `dict[str, float]` of hotkey → raw score. Raw scores are acceptable as long as they
+are finite and non-negative; the master normalizes them.
+
+```python
+async def get_weights() -> dict[str, float]:
+    return {"5F...hotkey": 1.0}
+```
+
+_Source: `docs/challenge-integration.md:9-14`; `src/platform_network/master/challenge_client.py:31-43`._
+
+## 2. Normalize each challenge's weights
+
+For each challenge, raw scores are cleaned and normalized: non-finite and
+non-positive values are dropped, and the remainder is scaled to sum to `1.0`. A
+challenge whose cleaned weights sum to zero contributes an empty map.
+
+```python
+def normalize_weights(raw: dict[str, float]) -> dict[str, float]:
+    cleaned = _clean_weights(raw)            # finite and > 0 only
+    total = sum(cleaned.values())
+    if total <= 0:
+        return {}
+    return {hotkey: value / total for hotkey, value in cleaned.items()}
+```
+
+_Source: `src/platform_network/master/aggregator.py:9-26`._
+
+## 3. Normalize emissions
+
+The configured emission share of each successful challenge is normalized across all
+active challenges so the shares sum to `1.0`. If the total is zero, every active
+challenge gets `0.0`.
+
+_Source: `src/platform_network/master/aggregator.py:29-34`._
+
+## 4. Combine into per-hotkey scores
+
+Each challenge's normalized per-hotkey weight is multiplied by that challenge's
+normalized emission share, and the products are summed per hotkey. Challenges that
+did not return weights successfully are skipped.
+
+```python
+for result in challenge_results:
+    if not result.ok:
+        continue
+    emission = emissions.get(result.slug, 0.0)
+    for hotkey, weight in normalize_weights(result.weights).items():
+        hotkey_scores[hotkey] += emission * weight
+```
+
+_Source: `src/platform_network/master/aggregator.py:44-49`._
+
+## 5. Map miner hotkeys to Bittensor UIDs
+
+The per-hotkey scores are mapped to on-chain UIDs using the metagraph cache. A
+hotkey with no UID is dropped, and **UID `0` (the master UID) is excluded** from the
+miner vector.
+
+```python
+for hotkey, weight in hotkey_scores.items():
+    uid = hotkey_to_uid.get(hotkey)
+    if uid is None:
+        continue
+    if uid == 0:
+        continue
+    uid_scores[uid] += weight
+```
+
+_Source: `src/platform_network/master/aggregator.py:51-60`; `src/platform_network/master/service.py:88`._
+
+The master UID default is `0`.
+
+_Source: `src/platform_network/config/settings.py:17`._
+
+## 6. Normalize the UID vector
+
+The UID scores are normalized to sum to `1.0`. If the total is zero (no eligible
+miners), the vector falls back to `{0: 1.0}` — all weight on the master UID. The
+result is returned as a `FinalWeights`, sorted by UID.
+
+```python
+total = sum(uid_scores.values())
+if total > 0:
+    normalized = {uid: value / total for uid, value in uid_scores.items()}
+else:
+    normalized = {0: 1.0}
+```
+
+_Source: `src/platform_network/master/aggregator.py:62-73`._
+
+## 7. Publish at `/v1/weights/latest`
+
+`compute_latest_response` wraps the final vector in a `MasterWeightsResponse` — the
+UIDs and weights, the per-hotkey weights, the source-challenge contributions, the
+configured `netuid` and chain endpoint, and timestamps. `expires_at` is
+`computed_at` plus the freshness window.
+
+_Source: `src/platform_network/master/service.py:92-116`._
+
+The freshness window is `MASTER_WEIGHTS_FRESHNESS_SECONDS = 720` seconds, and
+`expires_at` is validated to be in the future when the response is built.
+
+_Source: `src/platform_network/schemas/weights.py:8`._
+
+The public read is served by the proxy at `GET /v1/weights/latest`; the full
+response schema is on the [Weights API](/reference/api-weights) page.
+
+_Source: `src/platform_network/master/app_admin.py:136-157`._
+
+## 8. Submit on-chain
+
+The on-chain submitter fetches the published vector and submits it to Bittensor with
+the validator hotkey. In the master's own epoch loop, `run_epoch` calls the weight
+setter directly when configured to submit.
+
+_Source: `src/platform_network/master/service.py:118-139`; `README.md:135`._
+
+The submit path is owned by the [validator network](/architecture/validator-network):
+the submitter is a separate, submit-only process that reads `/v1/weights/latest` and
+calls `set_weights`.
+
+_Source: `deploy/swarm/submitter/run_submitter.py:89-144`._
+
+## Failure behavior
+
+If a challenge fails its health check or `get_weights`, its contribution is zero for
+that epoch; the master does not auto-disable it.
+
+_Source: `docs/security.md:55`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Validator network" icon="shield-halved" href="/architecture/validator-network">
+    The submit-only process that posts the vector on-chain.
+  </Card>
+  <Card title="Weights API" icon="scale-balanced" href="/reference/api-weights">
+    The response schema served at `/v1/weights/latest`.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`). Paths prefixed with
+`src/platform_network/` are the internal Python package.

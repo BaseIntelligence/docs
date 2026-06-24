@@ -1,0 +1,141 @@
+---
+title: "Settings reference"
+description: "Every Platform configuration key, with its type, default, and source. Grouped by settings section."
+icon: "sliders"
+---
+
+This page documents every key in the `Settings` model (`base/src/platform_network/config/settings.py`). All keys live under a section (for example `master.proxy_port`). See [Configuration](/reference/configuration) for how files and environment variables are merged.
+
+## Top level
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `environment` | string | `development` | `base/src/platform_network/config/settings.py:119` |
+
+The `environment` value drives the [production policy](/reference/configuration#production-policy) when set to `prod`, `production`, or `staging`.
+
+## network
+
+Chain, wallet, and subnet identity (`base/src/platform_network/config/settings.py:10-17`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `network.name` | string | `platform` | `base/src/platform_network/config/settings.py:11` |
+| `network.netuid` | integer | `100` | `base/src/platform_network/config/settings.py:12` |
+| `network.chain_endpoint` | string or null | `null` | `base/src/platform_network/config/settings.py:13` |
+| `network.wallet_name` | string | `default` | `base/src/platform_network/config/settings.py:14` |
+| `network.wallet_hotkey` | string | `default` | `base/src/platform_network/config/settings.py:15` |
+| `network.wallet_path` | string or null | `null` | `base/src/platform_network/config/settings.py:16` |
+| `network.master_uid` | integer | `0` | `base/src/platform_network/config/settings.py:17` |
+
+## master
+
+Master proxy, epoch scheduling, registry, and upload acceptance (`base/src/platform_network/config/settings.py:20-38`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `master.registry_url` | string | `https://chain.platform.network` | `base/src/platform_network/config/settings.py:21` |
+| `master.proxy_host` | string | `0.0.0.0` | `base/src/platform_network/config/settings.py:26` |
+| `master.proxy_port` | integer | `8081` | `base/src/platform_network/config/settings.py:27` |
+| `master.epoch_interval_seconds` | integer | `360` | `base/src/platform_network/config/settings.py:28` |
+| `master.metagraph_cache_ttl_seconds` | integer | `300` | `base/src/platform_network/config/settings.py:29` |
+| `master.challenge_timeout_seconds` | float | `10.0` | `base/src/platform_network/config/settings.py:30` |
+| `master.challenge_retries` | integer | `3` | `base/src/platform_network/config/settings.py:31` |
+| `master.registry_state_file` | string | `/var/lib/platform/registry.json` | `base/src/platform_network/config/settings.py:32` |
+| `master.upload_signature_ttl_seconds` | integer | `300` | `base/src/platform_network/config/settings.py:33` |
+| `master.upload_nonce_ttl_seconds` | integer | `86400` | `base/src/platform_network/config/settings.py:34` |
+| `master.upload_max_body_bytes` | integer | `7500000` | `base/src/platform_network/config/settings.py:35` |
+| `master.upload_require_registered_hotkey` | boolean | `true` | `base/src/platform_network/config/settings.py:36` |
+| `master.upload_extra_registered_hotkeys` | list of string | `[]` | `base/src/platform_network/config/settings.py:38` |
+
+<Tip>
+  `master.admin_host` and `master.admin_port` exist only for back-compat and are ignored — the admin and registry API is served by the proxy on `proxy_port` as a single public API (`base/src/platform_network/config/settings.py:22-25`).
+</Tip>
+
+## validator
+
+Validator registry polling and weight submission (`base/src/platform_network/config/settings.py:41-52`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `validator.registry_url` | string | `https://chain.platform.network` | `base/src/platform_network/config/settings.py:42` |
+| `validator.registry_retry_seconds` | integer | `15` | `base/src/platform_network/config/settings.py:43` |
+| `validator.weights_url` | string or null | `null` | `base/src/platform_network/config/settings.py:44` |
+| `validator.weights_interval_seconds` | integer | `360` | `base/src/platform_network/config/settings.py:45` |
+| `validator.weights_timeout_seconds` | float | `15.0` | `base/src/platform_network/config/settings.py:46` |
+| `validator.weights_retries` | integer | `3` | `base/src/platform_network/config/settings.py:47` |
+| `validator.weights_freshness_seconds` | integer | `720` | `base/src/platform_network/config/settings.py:48` |
+
+The effective weights endpoint is `weights_url` if set, otherwise `registry_url` (`base/src/platform_network/config/settings.py:50-52`).
+
+## database
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `database.url` | string | `postgresql+asyncpg://platform:platform@postgres.platform.svc.cluster.local/platform` | `base/src/platform_network/config/settings.py:56` |
+
+<Tip>
+  In production the URL must point to an external PostgreSQL instance; `sqlite` URLs are rejected (`base/src/platform_network/config/policy.py:42-50`).
+</Tip>
+
+## docker
+
+Swarm broker, challenge networking, and job placement (`base/src/platform_network/config/settings.py:59-104`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `docker.network_name` | string | `platform_challenges` | `base/src/platform_network/config/settings.py:60` |
+| `docker.secret_dir` | string | `/var/lib/platform/secrets` | `base/src/platform_network/config/settings.py:61` |
+| `docker.internal_network` | boolean | `true` | `base/src/platform_network/config/settings.py:62` |
+| `docker.broker_host` | string | `0.0.0.0` | `base/src/platform_network/config/settings.py:63` |
+| `docker.broker_port` | integer | `8082` | `base/src/platform_network/config/settings.py:64` |
+| `docker.broker_url` | string | `http://platform-docker-broker:8082` | `base/src/platform_network/config/settings.py:65` |
+| `docker.broker_workspace_dir` | string | `/tmp/platform-docker-broker` | `base/src/platform_network/config/settings.py:66` |
+| `docker.broker_allowed_images` | list of string | `["ghcr.io/<org>/"]` | `base/src/platform_network/config/settings.py:67-69` |
+| `docker.allow_privileged` | boolean | `false` | `base/src/platform_network/config/settings.py:70` |
+| `docker.broker_privileged_slugs` | list of string | `[]` | `base/src/platform_network/config/settings.py:71` |
+| `docker.broker_node_role` | `manager` or `worker` | `manager` | `base/src/platform_network/config/settings.py:72` |
+| `docker.broker_allow_privileged_escape` | boolean | `false` | `base/src/platform_network/config/settings.py:73` |
+| `docker.broker_docker_socket_slugs` | list of string | `[]` | `base/src/platform_network/config/settings.py:81` |
+| `docker.broker_docker_socket_path` | string | `/var/run/docker.sock` | `base/src/platform_network/config/settings.py:82` |
+| `docker.broker_eval_readonly_mounts` | list of string | `[]` | `base/src/platform_network/config/settings.py:89` |
+| `docker.broker_eval_readonly_mounts_by_slug` | map of string to list | `{}` | `base/src/platform_network/config/settings.py:97-99` |
+| `docker.challenge_placement_constraint` | string or null | `node.role==manager` | `base/src/platform_network/config/settings.py:102` |
+| `docker.cpu_job_constraint` | string or null | `node.labels.platform.workload==cpu` | `base/src/platform_network/config/settings.py:103` |
+| `docker.gpu_job_constraint` | string or null | `node.labels.platform.workload==gpu` | `base/src/platform_network/config/settings.py:104` |
+
+<Tip>
+  The `broker_allowed_images` default is shown with the registry namespace redacted as `<org>`. Set it to your own fully-qualified registry prefix (for example `ghcr.io/<org>/`); broad prefixes are rejected under the production policy (`base/src/platform_network/config/policy.py:53-67`).
+</Tip>
+
+## security
+
+Admin token used to authorize admin API calls (`base/src/platform_network/config/settings.py:107-109`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `security.admin_token` | string or null | `null` | `base/src/platform_network/config/settings.py:108` |
+| `security.admin_token_file` | string or null | `null` | `base/src/platform_network/config/settings.py:109` |
+
+Provide the token inline with `admin_token`, or point `admin_token_file` at a file containing it.
+
+## observability
+
+Logging and telemetry (`base/src/platform_network/config/settings.py:112-115`).
+
+| Key | Type | Default | Source |
+|-----|------|---------|--------|
+| `observability.log_json` | boolean | `true` | `base/src/platform_network/config/settings.py:113` |
+| `observability.sentry_dsn` | string or null | `null` | `base/src/platform_network/config/settings.py:114` |
+| `observability.otel_service_name` | string | `platform` | `base/src/platform_network/config/settings.py:115` |
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="System architecture" icon="sitemap" href="/architecture/overview">
+    What each settings section actually configures.
+  </Card>
+  <Card title="Configuration examples" icon="file-code" href="/reference/config-examples">
+    These keys shown in complete, annotated files.
+  </Card>
+</CardGroup>

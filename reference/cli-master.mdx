@@ -1,0 +1,148 @@
+---
+title: "Master CLI"
+description: "platform master commands: run the proxy, broker, and supervisor, refresh and seed challenges, compute weights, and manage Swarm workers."
+icon: "server"
+---
+
+The `platform master` group runs the control-plane services and manages the Swarm that executes challenge work. The group help is `Run master components` (`base/src/platform_network/cli_app/main.py:58`). Every command below takes `--config`, defaulting to `config/master.example.yaml` unless noted.
+
+## Service commands
+
+These commands start long-running services. Each loads settings, configures JSON logging from `observability.log_json`, and binds to the host/port from your config.
+
+<Accordion title="platform master proxy — public proxy + admin/registry API">
+
+Runs the single public API. The proxy app also serves the admin and registry routers, so there is no separate admin listener (`base/src/platform_network/cli_app/main.py:540-543`). On startup it applies database migrations, then binds to `master.proxy_host:master.proxy_port` (`base/src/platform_network/cli_app/main.py:531`, `:569-571`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:526` |
+
+Default bind address is `0.0.0.0:8081` (`base/src/platform_network/config/settings.py:26-27`).
+
+```bash
+platform master proxy --config /etc/platform/master.yaml
+```
+
+</Accordion>
+
+<Accordion title="platform master broker — Docker broker API">
+
+Runs the Docker broker that dispatches each evaluation as a short-lived Swarm job. It applies migrations, builds the Swarm broker service from your `docker.*` settings, then binds to `docker.broker_host:docker.broker_port` (`base/src/platform_network/cli_app/main.py:580`, `:614-618`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:575` |
+
+Default bind address is `0.0.0.0:8082` (`base/src/platform_network/config/settings.py:63-64`).
+
+```bash
+platform master broker --config /etc/platform/master.yaml
+```
+
+</Accordion>
+
+<Accordion title="platform master supervisor — control-plane supervisor">
+
+Runs the Swarm control-plane supervisor as a systemd `Type=notify` service (`base/src/platform_network/cli_app/main.py:621-623`). It builds the supervisor from settings, reports the number of scheduled tasks, and runs until exit (`base/src/platform_network/cli_app/main.py:628-632`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:622` |
+
+```bash
+platform master supervisor --config /etc/platform/master.yaml
+```
+
+</Accordion>
+
+## Maintenance commands
+
+<Accordion title="platform master weights — compute or submit master weights">
+
+Computes the master weight vector for the current epoch. By default it runs in a loop on the interval `master.epoch_interval_seconds`; pass `--once` to run a single epoch (`base/src/platform_network/cli_app/main.py:815-818`).
+
+| Option | Default | Description | Source |
+|--------|---------|-------------|--------|
+| `--config` | `config/master.example.yaml` | Settings file. | `base/src/platform_network/cli_app/main.py:786` |
+| `--once` / `--loop` | `--loop` | Run a single epoch, or loop. | `base/src/platform_network/cli_app/main.py:787` |
+| `--dry-run` | off | Compute only; never submit. | `base/src/platform_network/cli_app/main.py:788` |
+| `--submit-on-chain` | off | Unsafe compatibility path: submit computed master weights on-chain. | `base/src/platform_network/cli_app/main.py:789-793` |
+
+```bash
+platform master weights --config /etc/platform/master.yaml --once --dry-run
+```
+
+</Accordion>
+
+<Accordion title="platform master refresh-challenge-images — re-pin images to current digests">
+
+Walks the registry, resolves the remote digest for each active challenge image on the given `--tag`, and updates plus restarts challenges whose digest changed (`base/src/platform_network/cli_app/main.py:736-762`). Draft and disabled challenges are skipped (`base/src/platform_network/cli_app/main.py:744`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:719` |
+| `--tag` | `latest` | `base/src/platform_network/cli_app/main.py:720` |
+
+```bash
+platform master refresh-challenge-images --tag latest
+```
+
+</Accordion>
+
+<Accordion title="platform master challenges seed-prism — seed PRISM and Agent Challenge">
+
+Creates or updates the PRISM challenge record and, if present, updates the Agent Challenge record (`base/src/platform_network/cli_app/main.py:765-781`). PRISM is seeded at 30% emission and Agent Challenge at 15% (`base/src/platform_network/cli_app/main.py:292-293`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/master.example.yaml` | `base/src/platform_network/cli_app/main.py:767` |
+
+```bash
+platform master challenges seed-prism
+```
+
+</Accordion>
+
+## Swarm worker management
+
+The `platform master worker` subgroup wraps `docker` Swarm node commands so you can enroll, label, and retire job nodes. The group help is `Manage Swarm workers (CPU/GPU job nodes)` (`base/src/platform_network/cli_app/main.py:64`).
+
+| Command | Arguments and options | Behavior | Source |
+|---------|----------------------|----------|--------|
+| `worker token` | `--role` (default `worker`; `worker` or `manager`), `--rotate` (rotate the join token first) | Prints the `docker swarm join` command for a new node. | `base/src/platform_network/cli_app/main.py:652-664` |
+| `worker list` | none | Lists Swarm nodes (`docker node ls`). | `base/src/platform_network/cli_app/main.py:667-670` |
+| `worker label` | `<node>`, `--workload` (required; `cpu` or `gpu`) | Adds the `platform.workload=<workload>` label so the broker schedules jobs onto the node. | `base/src/platform_network/cli_app/main.py:673-683` |
+| `worker drain` | `<node>`, `--active` | Drains a node, or with `--active` restores `availability=active`. | `base/src/platform_network/cli_app/main.py:686-695` |
+| `worker rm` | `<node>`, `--force` | Removes a node from the Swarm (`docker node rm`). | `base/src/platform_network/cli_app/main.py:698-708` |
+| `worker inspect` | `<node>` | Inspects a Swarm node (`docker node inspect`). | `base/src/platform_network/cli_app/main.py:711-714` |
+
+```bash
+# Mint a worker join token on the manager
+platform master worker token --role worker
+
+# After the node joins, label it for CPU jobs
+platform master worker list
+platform master worker label <node> --workload cpu
+```
+
+<Tip>
+  `worker token` selects the **Swarm role** with `--role worker|manager`. The **workload class** (cpu/gpu) is set separately with `worker label --workload cpu|gpu` after the node joins (`base/src/platform_network/cli_app/main.py:676`).
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master architecture" icon="server" href="/architecture/master">
+    The control-plane services these commands run.
+  </Card>
+  <Card title="Swarm" icon="diagram-project" href="/architecture/swarm">
+    How worker nodes execute challenge and evaluation jobs.
+  </Card>
+  <Card title="Configuration examples" icon="file-code" href="/reference/config-examples">
+    The annotated `master.example.yaml` these commands load.
+  </Card>
+  <Card title="Settings reference" icon="sliders" href="/reference/settings">
+    Every `master.*` and `docker.*` key.
+  </Card>
+</CardGroup>

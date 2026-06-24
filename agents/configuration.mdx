@@ -1,0 +1,91 @@
+---
+title: "Agent configuration"
+description: "Configure the baseagent template: the runtime defaults and the DeepSeek-only environment variables the Agent Challenge accepts."
+icon: "gear"
+---
+
+The `baseagent` template ships hardcoded runtime defaults and reads its provider configuration
+from a small, fixed set of environment variables. The Agent Challenge runtime policy restricts
+those variables to DeepSeek only.
+
+## Runtime defaults
+
+The template's defaults live in `src/config/defaults.py`
+(`baseagent/src/config/defaults.py:21-79`):
+
+```python
+CONFIG = {
+    "model": os.environ.get("LLM_MODEL", "deepseek-v4-pro"),
+    "provider": "deepseek",
+    "max_tokens": 16384,
+    "temperature": 0.0,
+    "max_iterations": 200,
+    "model_context_limit": 200_000,
+    "auto_compact_threshold": 0.85,
+    "prune_protect": 40_000,
+    "cache_enabled": True,
+}
+```
+
+| Key | Default | Meaning |
+|-----|---------|---------|
+| `model` | `deepseek-v4-pro` | Model used via the DeepSeek API. (`baseagent/src/config/defaults.py:26`) |
+| `provider` | `deepseek` | LLM provider. (`baseagent/src/config/defaults.py:28`) |
+| `max_tokens` | `16384` | Output token limit. (`baseagent/src/config/defaults.py:31`) |
+| `temperature` | `0.0` | Deterministic sampling. (`baseagent/src/config/defaults.py:33`) |
+| `max_iterations` | `200` | Maximum loop iterations before stopping. (`baseagent/src/config/defaults.py:38`) |
+| `model_context_limit` | `200_000` | Context window budget. (`baseagent/src/config/defaults.py:46`) |
+| `auto_compact_threshold` | `0.85` | Compaction trigger as a fraction of usable context. (`baseagent/src/config/defaults.py:50`) |
+| `prune_protect` | `40_000` | Recent tool-output tokens protected from pruning. (`baseagent/src/config/defaults.py:52`) |
+| `cache_enabled` | `True` | Enable prompt caching. (`baseagent/src/config/defaults.py:58`) |
+
+## Environment variables
+
+The template reads these DeepSeek variables (`baseagent/README.md:337-342`):
+
+| Variable | Description |
+|----------|-------------|
+| `DEEPSEEK_API_KEY` | DeepSeek API key. |
+| `DEEPSEEK_BASE_URL` | DeepSeek API base URL, `https://api.deepseek.com`. |
+| `LLM_MODEL` | Model override, default `deepseek-v4-pro`. |
+| `LLM_COST_LIMIT` | Maximum cost in USD before aborting. |
+
+`LLM_MODEL` overrides `config["model"]`, and `LLM_COST_LIMIT` and `DEEPSEEK_BASE_URL` are read
+at run time from `context.env` or the process environment.
+(`baseagent/agent.py:142-146`)
+
+## DeepSeek-only policy
+
+Challenge execution is DeepSeek-only for cost reasons. Your submitted agent must use
+(`agent-challenge/docs/miner/README.md:93-99`):
+
+```bash
+export DEEPSEEK_API_KEY="<deepseek-api-key>"
+export DEEPSEEK_BASE_URL="https://api.deepseek.com"
+export LLM_MODEL="deepseek-v4-pro"
+```
+
+Do not configure OpenRouter, Anthropic, OpenAI, Chutes, local model providers, or any other
+LLM provider in the submitted artifact, and do not switch to another DeepSeek model.
+(`agent-challenge/docs/miner/README.md:101-104`)
+
+At evaluation time the runtime injects only the allowlisted DeepSeek variables —
+`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `LLM_MODEL`, and `LLM_COST_LIMIT` — via `context.env`.
+(`agent-challenge/src/agent_challenge/evaluation/own_runner/isolation.py:64-67`)
+
+<Tip>
+  The model string is exactly `deepseek-v4-pro`. Continuous review flags any other `deepseek-*`
+  model and any non-DeepSeek provider before scoring.
+  (`agent-challenge/src/agent_challenge/analyzer/pipeline.py:70,243`)
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Tools & capabilities" icon="screwdriver-wrench" href="/agents/tools">
+    The tools the agent can call.
+  </Card>
+  <Card title="Submitting an agent" icon="upload" href="/agents/submitting">
+    Package and sign a submission.
+  </Card>
+</CardGroup>

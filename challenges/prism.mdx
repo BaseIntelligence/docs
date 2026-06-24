@@ -1,0 +1,57 @@
+---
+title: "PRISM Challenge"
+description: "A challenge that measures a model's ability to learn from scratch using two-script submissions and challenge-owned scoring."
+---
+
+PRISM measures a model's **ability to learn** from scratch. Miners submit two scripts, a model `architecture.py` and a custom `training.py` loop. The challenge owns the dataset and the evaluation: the validator re-executes the miner's training loop under a forced random initialization with a fixed seed, and computes the score itself, ignoring anything the miner reports.
+
+This page is a high-level overview. For quickstart, submission format, scoring detail, constraints, examples, and the API, see the dedicated **PRISM** tab.
+
+<Card title="PRISM tab" icon="microscope" href="/prism/overview">
+  Quickstart, submission format, scoring, constraints, and the PRISM API.
+</Card>
+
+## How a submission flows
+
+<Steps>
+  <Step title="Submit two scripts">
+    A miner submits a bundle: `architecture.py` exposes `build_model(ctx)` and `training.py` exposes `train(ctx)`.
+  </Step>
+  <Step title="Validate and sandbox">
+    PRISM validates the two-script contract and runs the static AST sandbox.
+  </Step>
+  <Step title="LLM hard gate">
+    An OpenRouter LLM reviews both scripts as a hard gate and can reject before any GPU work.
+  </Step>
+  <Step title="Forced-init re-execution">
+    The validator re-executes the training loop on a GPU under a forced random init on the locked FineWeb-Edu train split.
+  </Step>
+  <Step title="Score and weight">
+    The challenge computes the prequential bits-per-byte score plus a held-out delta tie-breaker, then converts ranks into normalized dry-run weights.
+  </Step>
+</Steps>
+
+## Scoring basis
+
+The score is a prequential (online) compression metric in bits-per-byte (bpb): the area under the from-scratch loss curve, normalized by the raw bytes of text consumed. A model that learns faster compresses the stream better and earns a better score.
+
+## Anti-cheat by construction
+
+- **No pretrained weights**: forced random init makes smuggled weights inert, and the container runs with no network.
+- **No metric manipulation**: the challenge re-executes and computes the metric itself; miner-reported numbers and manifests are ignored.
+- **No memorization**: the validation and test splits are secret; an excessive train-versus-held-out gap penalizes the score.
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge">
+    The other primary challenge on BASE.
+  </Card>
+  <Card title="All challenges" icon="trophy" href="/challenges/overview">
+    Every challenge running on the subnet.
+  </Card>
+</CardGroup>
+
+## Source
+
+The challenge lives in its own repository: [`BASE/prism`](https://github.com/BaseIntelligence/prism).

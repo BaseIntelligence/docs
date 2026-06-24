@@ -1,0 +1,133 @@
+---
+title: "Configuration examples"
+description: "Annotated master and validator configuration files you can copy and adapt."
+icon: "file-code"
+---
+
+These examples mirror the shipped `config/master.example.yaml` and `config/validator.example.yaml`. Image registry namespaces are shown as `<org>` — replace them with your own fully-qualified registry prefix. See the [Settings reference](/reference/settings) for every available key.
+
+<Tabs>
+  <Tab title="master.example.yaml">
+
+Use this for `platform master proxy`, `broker`, `supervisor`, and `weights`. The full source is `base/config/master.example.yaml`.
+
+```yaml
+network:
+  name: platform              # base/config/master.example.yaml:2
+  netuid: 100                 # base/config/master.example.yaml:3
+  chain_endpoint: null        # base/config/master.example.yaml:4
+  wallet_name: default        # base/config/master.example.yaml:5
+  wallet_hotkey: default      # base/config/master.example.yaml:6
+  wallet_path: null           # base/config/master.example.yaml:7
+  master_uid: 0               # base/config/master.example.yaml:8
+
+master:
+  registry_url: https://chain.platform.network   # base/config/master.example.yaml:11
+  proxy_host: 0.0.0.0                             # base/config/master.example.yaml:12
+  proxy_port: 8081                                # base/config/master.example.yaml:13
+  epoch_interval_seconds: 360                     # base/config/master.example.yaml:14
+  metagraph_cache_ttl_seconds: 300               # base/config/master.example.yaml:15
+  registry_state_file: /var/lib/platform/registry.json  # base/config/master.example.yaml:16
+
+validator:
+  registry_url: https://chain.platform.network   # base/config/master.example.yaml:19
+  registry_retry_seconds: 15                      # base/config/master.example.yaml:20
+  weights_url: null                               # base/config/master.example.yaml:21
+  weights_interval_seconds: 360                   # base/config/master.example.yaml:22
+  weights_timeout_seconds: 15.0                   # base/config/master.example.yaml:23
+  weights_retries: 3                              # base/config/master.example.yaml:24
+  weights_freshness_seconds: 720                  # base/config/master.example.yaml:25
+
+database:
+  # base/config/master.example.yaml:28
+  url: postgresql+asyncpg://platform:<password>@postgres.platform.svc.cluster.local/platform
+
+docker:
+  network_name: platform_challenges               # base/config/master.example.yaml:31
+  secret_dir: /var/lib/platform/secrets           # base/config/master.example.yaml:32
+  internal_network: true                          # base/config/master.example.yaml:33
+  broker_host: 0.0.0.0                            # base/config/master.example.yaml:34
+  broker_port: 8082                              # base/config/master.example.yaml:35
+  broker_url: http://platform-docker-broker:8082  # base/config/master.example.yaml:36
+  broker_workspace_dir: /tmp/platform-docker-broker  # base/config/master.example.yaml:37
+  broker_allowed_images:
+    - ghcr.io/<org>/                              # base/config/master.example.yaml:39 (namespace redacted)
+  challenge_placement_constraint: node.role==manager            # base/config/master.example.yaml:41
+  cpu_job_constraint: node.labels.platform.workload==cpu        # base/config/master.example.yaml:42
+  gpu_job_constraint: node.labels.platform.workload==gpu        # base/config/master.example.yaml:43
+
+security:
+  admin_token_file: /var/lib/platform/secrets/admin_token  # base/config/master.example.yaml:46
+
+observability:
+  log_json: true                                  # base/config/master.example.yaml:49
+  sentry_dsn: null                                # base/config/master.example.yaml:50
+  otel_service_name: platform-master              # base/config/master.example.yaml:51
+```
+
+  </Tab>
+  <Tab title="validator.example.yaml">
+
+Use this for `platform validator run` and `platform registry print`. The full source is `base/config/validator.example.yaml`.
+
+```yaml
+network:
+  name: platform              # base/config/validator.example.yaml:2
+  netuid: 100                 # base/config/validator.example.yaml:3
+  chain_endpoint: null        # base/config/validator.example.yaml:4
+  wallet_name: default        # base/config/validator.example.yaml:5
+  wallet_hotkey: default      # base/config/validator.example.yaml:6
+  wallet_path: null           # base/config/validator.example.yaml:7
+  master_uid: 0               # base/config/validator.example.yaml:8
+
+validator:
+  registry_url: https://chain.platform.network   # base/config/validator.example.yaml:16
+  registry_retry_seconds: 15                      # base/config/validator.example.yaml:17
+  weights_url: null                               # base/config/validator.example.yaml:18
+  weights_interval_seconds: 360                   # base/config/validator.example.yaml:19
+  weights_timeout_seconds: 15.0                   # base/config/validator.example.yaml:20
+  weights_retries: 3                              # base/config/validator.example.yaml:21
+  weights_freshness_seconds: 720                  # base/config/validator.example.yaml:22
+
+database:
+  # base/config/validator.example.yaml:25
+  url: postgresql+asyncpg://platform:<password>@postgres.platform.svc.cluster.local/platform
+
+docker:
+  network_name: platform_challenges               # base/config/validator.example.yaml:28
+  secret_dir: /var/lib/platform/secrets           # base/config/validator.example.yaml:29
+  internal_network: true                          # base/config/validator.example.yaml:30
+  broker_url: http://platform-docker-broker:8082  # base/config/validator.example.yaml:31
+  broker_allowed_images:
+    - ghcr.io/<org>/                              # base/config/validator.example.yaml:33 (namespace redacted)
+
+observability:
+  log_json: true                                  # base/config/validator.example.yaml:36
+  sentry_dsn: null                                # base/config/validator.example.yaml:37
+  otel_service_name: platform-validator           # base/config/validator.example.yaml:38
+```
+
+  </Tab>
+</Tabs>
+
+<Tip>
+  Operators who cannot meet the validator infrastructure requirements can instead delegate validation power to the recommended Platform validator hotkey via Bittensor child-hotkey / stake-weight, rather than running the validator stack themselves (`base/config/validator.example.yaml:10-13`).
+</Tip>
+
+<Card title="Settings reference" icon="sliders" href="/reference/settings">
+  Every key, type, and default for these files.
+</Card>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master architecture" icon="server" href="/architecture/master">
+    What the master configuration drives at runtime.
+  </Card>
+  <Card title="Validator configuration" icon="shield-halved" href="/validators/configuration">
+    The validator-side configuration walkthrough.
+  </Card>
+  <Card title="Configuration" icon="gear" href="/reference/configuration">
+    The load order, environment overrides, and production policy.
+  </Card>
+</CardGroup>

@@ -1,0 +1,88 @@
+---
+title: "Weights schema"
+description: "Field-level reference for the weight vector models used by the subnet master and challenges."
+icon: "table-list"
+---
+
+This page is the field-level reference for the weight models defined in
+`schemas/weights.py`. For the public read that returns the aggregated vector, see
+[Weights API](/reference/api-weights).
+
+## `MasterWeightsResponse`
+
+The aggregated, chain-ready weight vector returned by
+`GET /v1/weights/latest` (`schemas/weights.py:33-42`).
+
+| Field | Type | Default | Source |
+|-------|------|---------|--------|
+| `netuid` | integer | — | `schemas/weights.py:34` |
+| `chain_endpoint` | string | — | `schemas/weights.py:35` |
+| `uids` | array of integer | — | `schemas/weights.py:36` |
+| `weights` | array of number | — | `schemas/weights.py:37` |
+| `hotkey_weights` | object (string → number) | `{}` | `schemas/weights.py:38` |
+| `computed_at` | datetime | — | `schemas/weights.py:39` |
+| `expires_at` | datetime | — | `schemas/weights.py:40` |
+| `source_challenges` | array of `ChallengeWeightsResult` | — | `schemas/weights.py:41` |
+| `metagraph_updated_at` | datetime | — | `schemas/weights.py:42` |
+
+`uids` and `weights` are parallel arrays — the weight at index `i` applies to the
+UID at index `i`. `expires_at` is validated to be in the future when the model is
+constructed; a non-future value raises a validation error
+(`schemas/weights.py:44-48`).
+
+## `ChallengeWeightsResult`
+
+A single challenge's contribution inside `source_challenges`
+(`schemas/weights.py:19-24`).
+
+| Field | Type | Default | Source |
+|-------|------|---------|--------|
+| `slug` | string | — | `schemas/weights.py:20` |
+| `emission_percent` | number | — | `schemas/weights.py:21` |
+| `weights` | object (string → number) | `{}` | `schemas/weights.py:22` |
+| `ok` | boolean | `true` | `schemas/weights.py:23` |
+| `error` | string or null | `null` | `schemas/weights.py:24` |
+
+When a challenge collection fails, `ok` is `false` and `error` carries the
+failure detail while `weights` stays empty (`challenge_client.py:54-59`).
+
+## `ChallengeWeightsResponse`
+
+The shape a challenge returns from its internal `get_weights` endpoint, which the
+master collects per challenge (`schemas/weights.py:11-16`,
+`challenge_client.py:31`, `challenge_client.py:43`).
+
+| Field | Type | Default | Source |
+|-------|------|---------|--------|
+| `challenge_slug` | string | — | `schemas/weights.py:12` |
+| `epoch` | integer or null | `null` | `schemas/weights.py:13` |
+| `weights` | object (string → number) | `{}` | `schemas/weights.py:14` |
+| `metadata` | object | `{}` | `schemas/weights.py:15` |
+| `computed_at` | datetime | now (UTC) | `schemas/weights.py:16` |
+
+## `FinalWeights`
+
+The internal vector model pairing UIDs with weights and per-hotkey weights
+(`schemas/weights.py:27-30`).
+
+| Field | Type | Default | Source |
+|-------|------|---------|--------|
+| `uids` | array of integer | — | `schemas/weights.py:28` |
+| `weights` | array of number | — | `schemas/weights.py:29` |
+| `hotkey_weights` | object (string → number) | `{}` | `schemas/weights.py:30` |
+
+## Freshness constant
+
+`MASTER_WEIGHTS_FRESHNESS_SECONDS = 720` defines the freshness window for the
+master weights (`schemas/weights.py:8`).
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Weights pipeline" icon="scale-balanced" href="/architecture/weights-pipeline">
+    How these models are produced each epoch.
+  </Card>
+  <Card title="Weights API" icon="scale-balanced" href="/reference/api-weights">
+    The public read that returns these models.
+  </Card>
+</CardGroup>

@@ -1,0 +1,78 @@
+---
+title: "Install the miner"
+description: "Set up the subnet tooling and a Bittensor wallet so you can sign and submit work."
+icon: "download"
+---
+
+Miners interact with BASE over signed HTTP, so the install footprint is small:
+the subnet package (for tooling and the wallet integration) and a Bittensor wallet. There
+is no separate miner daemon to run (`src/platform_network/cli_app/main.py:57-71`).
+
+## Requirements
+
+| Requirement | Value | Source |
+|-------------|-------|--------|
+| Python | `>=3.12` | `pyproject.toml:5` |
+| Bittensor | `>=9` (extra) | `pyproject.toml:28` |
+| Wallet | coldkey + hotkey | `src/platform_network/config/settings.py:14-15` |
+| netuid | `100` | `src/platform_network/config/settings.py:12` |
+
+## Install the subnet package
+
+The canonical install uses `uv`. From the `base` repository root (`README.md:212`):
+
+```bash
+uv sync --extra dev --extra master
+```
+
+This installs the package and pulls in the Bittensor dependency declared by the `master`
+extra (`pyproject.toml:39`). The Bittensor library is what provides wallet creation,
+hotkey signing, and on-chain registration.
+
+<Tip>
+The `bittensor` extra (`pyproject.toml:28`) is what carries the substrate keypair support
+used to verify your signatures (`src/platform_network/security/miner_auth.py:114-121`).
+Installing it locally gives you the same `bittensor` library the subnet uses to verify
+uploads.
+</Tip>
+
+## Verify the install
+
+The installed console script is named `platform`
+(`pyproject.toml:43`). Confirm the CLI loads and inspect the registry to confirm you can
+reach the subnet:
+
+```bash
+platform --help
+curl -sf "$PROXY_URL/v1/registry"
+```
+
+`platform --help` lists the available command groups
+(`src/platform_network/cli_app/main.py:57-71`). `/v1/registry` is the public registry read
+served by the proxy (`README.md:425`).
+
+<Tip>
+`$PROXY_URL` is the public proxy URL. It defaults to `https://chain.platform.network`
+(`src/platform_network/config/settings.py:21`, `config/master.example.yaml:11`). On a
+local single-node bring-up the proxy is published on host port `18080` (`README.md:262`).
+</Tip>
+
+## What you do not install
+
+You do not install or run a miner service. The CLI's runnable components are operator and
+validator roles: `master proxy`, `master broker`, `master supervisor`, `master weights`,
+and `validator run` (`src/platform_network/cli_app/main.py:525-571`,
+`src/platform_network/cli_app/main.py:574-632`,
+`src/platform_network/cli_app/main.py:784-854`). Your work as a miner is built locally and
+submitted through the proxy.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Wallet & registration" icon="wallet" href="/miners/wallet-registration">
+    Create and register your hotkey.
+  </Card>
+  <Card title="Miner quickstart" icon="rocket" href="/miners/quickstart">
+    Build and submit your first artifact.
+  </Card>
+</CardGroup>

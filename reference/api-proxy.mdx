@@ -1,0 +1,127 @@
+---
+title: "Proxy API"
+description: "Public proxy routes on the subnet master: the challenge registry, submission status, and challenge passthrough."
+icon: "shuffle"
+---
+
+The proxy app bridges public traffic to active challenges and exposes the public
+registry read. This page covers the registry, the submission-status read, and the
+generic challenge passthrough. The signed submission upload has its own page —
+see [Upload protocol](/reference/upload-protocol).
+
+## `GET /v1/registry`
+
+Returns the validator-facing registry of registered challenges. This is a public
+read (no `require_admin` dependency) (`app_admin.py:132-134`).
+
+**Response** — `RegistryResponse` (`schemas/challenge.py:159-165`):
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `network` | string | Defaults to `"platform"` (`schemas/challenge.py:162`) |
+| `api_version` | string | Defaults to `"1.0"` (`schemas/challenge.py:163`) |
+| `master_uid` | integer | Defaults to `0` (`schemas/challenge.py:164`) |
+| `challenges` | array | List of `RegistryChallenge` (`schemas/challenge.py:165`) |
+
+Each `RegistryChallenge` (`schemas/challenge.py:139-156`):
+
+| Field | Type |
+|-------|------|
+| `slug` | string |
+| `name` | string |
+| `image` | string |
+| `version` | string |
+| `emission_percent` | number |
+| `status` | string (`active` / `inactive` / `disabled` / `draft`, `schemas/challenge.py:13-19`) |
+| `description` | string or null |
+| `metadata` | object |
+| `internal_base_url` | string |
+| `public_proxy_base_path` | string |
+| `required_capabilities` | array of string |
+| `resources` | object |
+| `volumes` | object |
+| `env` | object |
+| `secrets` | array of string |
+
+Challenges in `draft` status are excluded from this response
+(`registry.py:411`). The `public_proxy_base_path` defaults to
+`/challenges/{slug}` (`registry.py:72-75`).
+
+```bash
+curl -s "$MASTER_URL/v1/registry"
+```
+
+## `GET /v1/challenges/{challenge_name}/submissions/{submission_id}`
+
+Reads the status of a previously uploaded submission. The proxy forwards the
+request to the active challenge's `/v1/submissions/{submission_id}` route and
+returns the upstream response unchanged (`app_proxy.py:514-518`,
+`app_proxy.py:486-508`, `app_proxy.py:494`).
+
+This read does not require a miner signature — it forwards with the standard safe
+header set (`app_proxy.py:497`). If the challenge is not registered or not
+`active`, the proxy returns `404` (`app_proxy.py:243-254`); if the challenge is
+unreachable, it returns `502` (`app_proxy.py:499-502`).
+
+```bash
+curl -s "$MASTER_URL/v1/challenges/agent-challenge/submissions/$SUBMISSION_ID"
+```
+
+The response body shape is owned by the target challenge and is not defined in
+the master, so it is not documented here.
+
+## Challenge passthrough
+
+Two catch-all routes forward public challenge traffic to the active challenge's
+internal base URL:
+
+- `/challenges/{slug}` (`app_proxy.py:520-525`)
+- `/challenges/{slug}/{path}` (`app_proxy.py:527-532`)
+
+Both accept `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`, and `HEAD`
+(`app_proxy.py:522`, `app_proxy.py:529`). The proxy adds an
+`X-Platform-Proxy: true` header and an `X-Platform-Challenge-Slug` header to the
+forwarded request (`app_proxy.py:185`, `app_proxy.py:404`).
+
+### Blocked paths
+
+The passthrough refuses to forward to private challenge routes and returns
+`403 Forbidden` (`app_proxy.py:386-390`). Blocked paths are
+(`is_blocked_proxy_path`, `app_proxy.py:90-110`):
+
+- `/health` and `/version` (`app_proxy.py:73`)
+- `/internal` and any `/internal/...` path (`app_proxy.py:96-97`)
+- benchmark-execution paths such as `/benchmark-executions` or a trailing
+  `run` / `execute` / `launch` action under `benchmark`/`benchmarks`
+  (`app_proxy.py:74`, `app_proxy.py:102-110`)
+
+```bash
+curl -s "$MASTER_URL/challenges/agent-challenge/leaderboard"
+```
+
+If the challenge is not registered or not `active`, the passthrough returns `404`
+(`app_proxy.py:243-254`); upstream transport failures return `502`
+(`app_proxy.py:414-422`).
+
+## `GET /v1/challenges/dashboard.svg`
+
+Returns a rendered challenges dashboard as `image/svg+xml` with
+`Cache-Control: no-store`. This is a public read (`app_admin.py:165-174`).
+
+```bash
+curl -s "$MASTER_URL/v1/challenges/dashboard.svg"
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Master architecture" icon="server" href="/architecture/master">
+    The proxy and registry internals behind these routes.
+  </Card>
+  <Card title="Challenge integration" icon="diagram-project" href="/architecture/challenge-integration">
+    How passthrough traffic reaches an active challenge.
+  </Card>
+  <Card title="API overview" icon="plug" href="/reference/api">
+    The full endpoint map and authentication models.
+  </Card>
+</CardGroup>

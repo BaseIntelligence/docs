@@ -1,0 +1,119 @@
+---
+title: "Challenge integration"
+description: "How an isolated challenge plugs into the subnet: the weight contract, per-challenge SQLite state on the /data volume, and the trust boundary with the control plane."
+icon: "puzzle-piece"
+---
+
+Each challenge lives in its own repository and owns its submissions, scoring logic,
+state, and public miner experience. The subnet provides the orchestration layer that
+makes independent challenges run together as one subnet, and challenges plug in
+through a small, standard contract.
+
+_Source: `README.md:28-30`, `README.md:42-46`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The challenge integration contract, the SQLite runtime, and isolation rules.
+</Card>
+
+## Per-challenge isolation
+
+A challenge runs as a Swarm replicated service with its own OCI image, an internal
+shared token, public routes behind the proxy, an encrypted overlay network, and a
+`/data` Swarm volume. Public proxy paths block internal challenge routes.
+
+_Source: `docs/architecture.md:57-59`._
+
+| Property | Isolation |
+|----------|-----------|
+| Code | One repository and image per challenge |
+| Auth | Per-challenge internal shared token for internal calls |
+| Network | Encrypted overlay network per challenge |
+| State | Own SQLite database on its own `/data` volume |
+| Control-plane DB | Never injected into a challenge |
+
+_Source: `docs/architecture.md:57-61`; `docs/security.md:8-11`._
+
+## The weight contract
+
+A challenge implements an async `get_weights()` returning a `dict[str, float]` of
+hotkey → raw score. The master normalizes returned values, so raw scores are
+acceptable as long as they are finite and non-negative.
+
+```python
+async def get_weights() -> dict[str, float]:
+    return {"5F...hotkey": 1.0}
+```
+
+_Source: `docs/challenge-integration.md:9-14`._
+
+The master collects these over an internal call per epoch; see the
+[Weights pipeline](/architecture/weights-pipeline).
+
+_Source: `src/platform_network/master/challenge_client.py:31-43`._
+
+## Database contract
+
+Generated challenges read their runtime database URL from `CHALLENGE_DATABASE_URL`,
+which points at a SQLite file on the challenge `/data` Swarm volume:
+
+```text
+sqlite+aiosqlite:////data/challenge.sqlite3
+```
+
+The same URL is used for local runs and the deployed Swarm service. There is no
+Postgres server per challenge; each challenge mounts its own `/data` volume for the
+SQLite file and artifacts.
+
+_Source: `docs/challenge-integration.md:18-26`; `docs/architecture.md:79-81`._
+
+Challenges must never receive `PLATFORM_DATABASE_URL` or any central control-plane
+PostgreSQL credential — the shared control-plane PostgreSQL is only for master and
+validator state.
+
+_Source: `docs/challenge-integration.md:28`; `docs/security.md:8`._
+
+## Async SQLAlchemy
+
+Generated challenge templates export a `Base` and a `database` helper. Use normal
+SQLAlchemy 2.x async ORM patterns with `AsyncSession`, `select()`, model
+registration, and the FastAPI session dependency. Generated applications call
+`Base.metadata.create_all` through the async engine during startup after models are
+imported, creating missing tables for the current model set.
+
+_Source: `docs/challenge-integration.md:30-70`._
+
+## Persistent storage
+
+The `/data` Swarm volume is the only persistent store for a challenge — use it for
+the SQLite database, artifacts, analyzer output, uploaded files, and any local state
+that should survive restarts. By default the `/data` volume is retained when a
+challenge service is removed, which protects challenge state from accidental
+deletion.
+
+_Source: `docs/challenge-integration.md:72-76`._
+
+Volume retention and the manual purge path are covered on the
+[Database and registry](/architecture/database) page.
+
+## Build and publish
+
+The generated CI workflow tests the challenge and pushes its Docker image to the
+container registry on `main` and tags.
+
+_Source: `docs/challenge-integration.md:96`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Architecture overview" icon="sitemap" href="/architecture/overview">
+    How an isolated challenge fits the subnet.
+  </Card>
+  <Card title="Database and registry" icon="database" href="/architecture/database">
+    Per-challenge SQLite, retention, and the control-plane store.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`).

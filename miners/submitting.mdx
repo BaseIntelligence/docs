@@ -1,0 +1,131 @@
+---
+title: "Submitting your work"
+description: "Upload a signed submission through the subnet proxy, including endpoints, limits, and the bridge flow."
+icon: "upload"
+---
+
+You submit work as a signed HTTP request through the subnet proxy. The proxy verifies your
+miner signature, then forwards the artifact to the target challenge with verified-identity
+headers attached (`src/platform_network/master/app_proxy.py:424-484`). This page covers the
+endpoints, size limits, and what the challenge receives. For the signing message itself,
+see [Authentication & signing](/miners/authentication).
+
+## Upload endpoints
+
+Agent Challenge uploads have two public paths (`docs/miner/README.md:53-60`):
+
+```http
+POST /v1/challenges/{challenge_slug}/submissions
+POST /challenges/{challenge_slug}/submissions
+```
+
+| Path | Use | Source |
+|------|-----|--------|
+| `POST /v1/challenges/{slug}/submissions` | Raw ZIP bridge upload; the proxy verifies and forwards | `src/platform_network/master/app_proxy.py:510-512`, `docs/miner/README.md:56,60` |
+| `POST /challenges/{slug}/submissions` | JSON base64 generic proxy path; you sign the challenge-local `/submissions` request | `docs/miner/README.md:57,60`, `src/platform_network/master/app_proxy.py:147-163` |
+| `GET /v1/challenges/{slug}/submissions/{id}` | Submission status read | `src/platform_network/master/app_proxy.py:514-518` |
+
+<Tip>
+Use the raw ZIP bridge path (`/v1/challenges/{slug}/submissions`) for ZIP artifacts. The
+generic `/challenges/{slug}/submissions` path is the JSON base64 route where the miner
+signs the challenge-local request, and the proxy preserves your signature headers through
+the passthrough (`docs/miner/README.md:60`,
+`src/platform_network/master/app_proxy.py:147-163`).
+</Tip>
+
+## How the bridge upload works
+
+<Steps>
+  <Step title="You POST the signed artifact">
+    Send the artifact body to `POST /v1/challenges/{slug}/submissions` with the four
+    signature headers (`src/platform_network/master/app_proxy.py:510-512`).
+  </Step>
+  <Step title="The proxy checks the size">
+    The body is rejected with `413` if it exceeds the upload limit
+    (`src/platform_network/master/app_proxy.py:427-431`). The configured maximum is
+    `7,500,000` bytes (`src/platform_network/config/settings.py:35`).
+  </Step>
+  <Step title="The proxy verifies your signature">
+    The proxy verifies the miner signature and resolves your hotkey to a UID
+    (`src/platform_network/master/app_proxy.py:432-443`,
+    `src/platform_network/security/miner_auth.py:150-198`).
+  </Step>
+  <Step title="The proxy forwards to the challenge">
+    On success, the proxy forwards the body to the challenge's internal bridge endpoint
+    `POST /internal/v1/bridge/submissions` with verified-identity headers
+    (`src/platform_network/master/app_proxy.py:450-474`).
+  </Step>
+</Steps>
+
+## What the challenge receives
+
+After verification, the proxy strips your raw signature headers and forwards a verified set
+to the challenge (`src/platform_network/master/app_proxy.py:450-465`):
+
+```http
+Authorization: Bearer <challenge-token>
+X-Platform-Challenge-Slug: <slug>
+X-Platform-Verified-Hotkey: <hotkey>
+X-Platform-Verified-Nonce: <nonce>
+X-Platform-Request-Hash: <body-sha256>
+X-Platform-Verified-Uid: <uid>
+```
+
+- `X-Platform-Verified-Uid` is added only when your hotkey resolves to a UID
+  (`src/platform_network/master/app_proxy.py:461-462`).
+- If you send an `x-submission-filename` header, it is forwarded as
+  `X-Submission-Filename` (`src/platform_network/master/app_proxy.py:463-465`).
+- Sensitive caller headers, including your raw `x-hotkey`, `x-signature`, `x-nonce`, and
+  `x-timestamp`, are not forwarded on standard proxy routes
+  (`src/platform_network/master/app_proxy.py:37-53`).
+
+## Upload limits
+
+| Limit | Value | Source |
+|-------|-------|--------|
+| Max body size | `7,500,000` bytes (`413` if exceeded) | `src/platform_network/config/settings.py:35`, `src/platform_network/master/app_proxy.py:427-431` |
+| Signature freshness | `300` seconds | `src/platform_network/config/settings.py:33` |
+| Nonce retention | `86,400` seconds | `src/platform_network/config/settings.py:34` |
+| Registered hotkey | required by default | `src/platform_network/config/settings.py:36` |
+
+## Agent Challenge env actions
+
+For Agent Challenge, after analysis allows the artifact the submission pauses at
+`Waiting for miner action`. You must save env vars or confirm none are needed before launch
+(`docs/miner/README.md:66-97`). The signed public routes are
+(`docs/miner/README.md:70-77`):
+
+```http
+GET  /challenges/agent-challenge/submissions/{id}/env
+PUT  /challenges/agent-challenge/submissions/{id}/env
+POST /challenges/agent-challenge/submissions/{id}/env/confirm-empty
+POST /challenges/agent-challenge/submissions/{id}/launch
+```
+
+Env constraints (`docs/miner/README.md:97`):
+
+- keys match `^[A-Za-z_][A-Za-z0-9_]{0,127}$`;
+- at most `64` keys per request;
+- each value at most `16 KiB`;
+- total payload at most `128 KiB`.
+
+`PUT /env` replaces the full env set, `POST /env/confirm-empty` is required when the agent
+needs zero env vars, and `POST /launch` locks env metadata and starts Terminal-Bench
+queueing (`docs/miner/README.md:97`).
+
+<Tip>
+Env values are write-only. Responses expose metadata only (keys, count, empty
+confirmation, lock state, and timestamps); values cannot be retrieved after submission
+(`docs/miner/README.md:99`).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication & signing" icon="signature" href="/miners/authentication">
+    Build the canonical signing message.
+  </Card>
+  <Card title="Monitoring & logs" icon="chart-line" href="/miners/monitoring">
+    Track submission status and leaderboards.
+  </Card>
+</CardGroup>

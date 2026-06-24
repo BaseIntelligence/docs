@@ -1,0 +1,80 @@
+---
+title: "Wallet & registration"
+description: "Create a Bittensor coldkey and hotkey, then register your hotkey on netuid 100."
+icon: "wallet"
+---
+
+To mine on BASE you need a Bittensor wallet (a coldkey for custody and a
+hotkey for signing) and a hotkey registered on the subnet. The subnet runs on
+**netuid 100** (`src/platform_network/config/settings.py:12`), and every signed submission
+is bound to that netuid (`src/platform_network/security/miner_auth.py:96-111`).
+
+## Keys you need
+
+| Key | Role | Source |
+|-----|------|--------|
+| **coldkey** | Custody and ownership | `src/platform_network/config/settings.py:14` |
+| **hotkey** | Operational signing key | `src/platform_network/config/settings.py:15` |
+
+The subnet's default wallet name and default hotkey name are both `default`
+(`src/platform_network/config/settings.py:14-15`, `config/master.example.yaml:5-6`). Keep
+your hotkey consistent across submissions so your work accrues to one identity
+(`docs/miner/README.md:160`).
+
+## Register on netuid 100
+
+<Steps>
+  <Step title="Create the wallet">
+    Create a coldkey and a hotkey with the Bittensor wallet tooling installed by the
+    `bittensor` extra (`pyproject.toml:28`). The wallet name and hotkey name you choose
+    map to the `wallet_name` and `wallet_hotkey` settings
+    (`src/platform_network/config/settings.py:14-15`).
+  </Step>
+  <Step title="Register the hotkey on netuid 100">
+    Register your hotkey on the subnet. The netuid is fixed at `100`
+    (`src/platform_network/config/settings.py:12`,
+    `config/master.example.yaml:3`, `config/validator.example.yaml:3`). Registration places
+    your hotkey in the metagraph and assigns it a UID.
+  </Step>
+  <Step title="Confirm your hotkey is registered">
+    Uploads require a registered hotkey by default
+    (`src/platform_network/config/settings.py:36`). The subnet maps your hotkey to a UID
+    from the metagraph at verification time
+    (`src/platform_network/security/miner_auth.py:200-219`). If the hotkey is not in the
+    metagraph, the upload is rejected with an `unknown hotkey` error
+    (`src/platform_network/security/miner_auth.py:213-215`).
+  </Step>
+</Steps>
+
+## Why registration matters for uploads
+
+When you submit, the subnet verifies your signature and then resolves your hotkey to a UID
+(`src/platform_network/security/miner_auth.py:183`,
+`src/platform_network/security/miner_auth.py:200-219`):
+
+- The hotkey must exist in the metagraph, or the upload fails with `unknown hotkey`
+  (`src/platform_network/security/miner_auth.py:213-215`).
+- UID `0` is blocked (`src/platform_network/security/miner_auth.py:143`); a submission
+  resolving to UID `0` fails with `blocked uid`
+  (`src/platform_network/security/miner_auth.py:217-218`).
+- If the metagraph is unavailable and a registered hotkey is required, the upload fails
+  with `metagraph unavailable` (`src/platform_network/security/miner_auth.py:204-205`).
+
+<Tip>
+Registration is enforced because `upload_require_registered_hotkey` defaults to `true`
+(`src/platform_network/config/settings.py:36`). The verified UID is forwarded to the
+challenge as `X-Platform-Verified-Uid`
+(`src/platform_network/master/app_proxy.py:461-462`), so your on-chain identity follows
+the submission downstream.
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Choosing a challenge" icon="list-check" href="/miners/choose-a-challenge">
+    Pick agent-challenge or PRISM.
+  </Card>
+  <Card title="Authentication & signing" icon="signature" href="/miners/authentication">
+    Sign uploads with your hotkey.
+  </Card>
+</CardGroup>

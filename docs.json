@@ -1,53 +1,310 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "BASE",
+  "description": "Documentation for BASE, the Bittensor subnet (netuid 100) for decentralized collaborative AI research through competitive challenges.",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#d91f35",
+    "light": "#d91f35",
+    "dark": "#d91f35"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
   },
   "favicon": "/favicon.svg",
+  "fonts": {
+    "family": "Rethink Sans"
+  },
+  "styling": {
+    "eyebrows": "breadcrumbs",
+    "codeblocks": "dark"
+  },
+  "seo": {
+    "indexing": "all",
+    "metatags": {
+      "og:type": "website",
+      "og:site_name": "BASE",
+      "og:title": "BASE Documentation",
+      "og:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "og:image": "/images/og.png",
+      "twitter:card": "summary_large_image",
+      "twitter:title": "BASE Documentation",
+      "twitter:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "twitter:image": "/images/og.png"
+    }
+  },
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Overview",
+        "icon": "book-open",
+        "groups": [
+          {
+            "group": "Welcome",
+            "pages": [
+              "index",
+              "concepts/overview",
+              "concepts/how-it-works"
+            ]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "concepts/challenges",
+              "concepts/miners-and-validators",
+              "concepts/weights-and-emissions",
+              "concepts/incentive-mechanism",
+              "concepts/glossary"
+            ]
+          },
+          {
+            "group": "Get started",
+            "pages": [
+              "quickstart",
+              "concepts/installation",
+              "concepts/wallets-and-registration"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Miners",
+        "icon": "microchip",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "miners/overview",
+              "miners/quickstart",
+              "miners/installation",
+              "miners/wallet-registration"
+            ]
+          },
+          {
+            "group": "Mining",
+            "pages": [
+              "miners/choose-a-challenge",
+              "miners/submitting",
+              "miners/authentication",
+              "miners/monitoring",
+              "miners/troubleshooting"
+            ]
+          },
+          {
+            "group": "Migrate",
+            "pages": [
+              "miners/migration-baseagent"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Validators",
+        "icon": "shield-halved",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "validators/overview",
+              "validators/quickstart",
+              "validators/installation"
+            ]
+          },
+          {
+            "group": "Running a validator",
+            "pages": [
+              "validators/running",
+              "validators/weight-setting",
+              "validators/submitter",
+              "validators/configuration",
+              "validators/monitoring",
+              "validators/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Agent Developers",
+        "icon": "robot",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "agents/overview",
+              "agents/quickstart",
+              "agents/baseagent"
+            ]
+          },
+          {
+            "group": "Building agents",
+            "pages": [
+              "agents/architecture",
+              "agents/configuration",
+              "agents/tools",
+              "agents/submitting",
+              "agents/evaluation",
+              "agents/best-practices"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "PRISM",
+        "icon": "flask",
+        "groups": [
+          {
+            "group": "Get started",
+            "pages": [
+              "prism/overview",
+              "prism/quickstart",
+              "prism/how-it-works"
+            ]
+          },
+          {
+            "group": "Submitting to PRISM",
+            "pages": [
+              "prism/submit",
+              "prism/context",
+              "prism/scoring",
+              "prism/constraints",
+              "prism/examples",
+              "prism/api"
+            ]
+          },
+          {
+            "group": "Operators",
+            "pages": [
+              "prism/operators"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "icon": "code",
+        "groups": [
+          {
+            "group": "CLI",
+            "pages": [
+              "reference/cli",
+              "reference/cli-master",
+              "reference/cli-validator",
+              "reference/cli-challenge",
+              "reference/cli-db-registry"
+            ]
+          },
+          {
+            "group": "API",
+            "pages": [
+              "reference/api",
+              "reference/api-proxy",
+              "reference/api-admin",
+              "reference/api-weights"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "reference/configuration",
+              "reference/settings",
+              "reference/config-examples"
+            ]
+          },
+          {
+            "group": "Protocols",
+            "pages": [
+              "reference/upload-protocol",
+              "reference/weights-schema"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Architecture",
+        "icon": "sitemap",
+        "groups": [
+          {
+            "group": "System",
+            "pages": [
+              "architecture/overview",
+              "architecture/master",
+              "architecture/validator-network",
+              "architecture/challenge-integration"
+            ]
+          },
+          {
+            "group": "Infrastructure",
+            "pages": [
+              "architecture/swarm",
+              "architecture/broker",
+              "architecture/supervisor",
+              "architecture/weights-pipeline",
+              "architecture/security",
+              "architecture/database"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Challenges",
+        "icon": "trophy",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "challenges/overview"
+            ]
+          },
+          {
+            "group": "Primary challenges",
+            "pages": [
+              "challenges/agent-challenge",
+              "challenges/prism"
+            ]
+          },
+          {
+            "group": "Additional challenges",
+            "pages": [
+              "challenges/bounty-challenge",
+              "challenges/data-fabrication",
+              "challenges/agent-swe"
+            ]
+          },
+          {
+            "group": "Build a challenge",
+            "pages": [
+              "challenges/creating",
+              "challenges/sdk"
+            ]
+          }
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/BaseIntelligence",
+          "icon": "github"
         }
       ]
     }
   },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/BaseIntelligence/base"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Run a miner",
+      "href": "/miners/quickstart"
     }
   },
   "contextual": {
@@ -64,9 +321,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/BaseIntelligence"
     }
   }
 }

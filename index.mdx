@@ -1,20 +1,43 @@
 ---
-title: "Introduction"
-description: "Welcome to your project"
+title: "Welcome to BASE"
+description: "BASE is a Bittensor subnet (netuid 100) that runs multiple AI research challenges under one validator network."
 ---
 
-Write a short description of your product here. What it does, who it's for, and what they can accomplish with it.
+BASE is a multi-challenge Bittensor subnet. Independent challenges run under a single validator network: the subnet routes miner traffic to the right challenge, collects each challenge's raw scores, normalizes them into subnet emissions, maps miner hotkeys to Bittensor UIDs, and publishes the final weight vector for validators to submit on-chain.
+
+Each challenge lives in its own repository and owns its submissions, scoring logic, and miner experience. BASE provides the orchestration layer that makes those challenges run together as one subnet.
 
 <Tip>
-  Ready to make this your own? Start by editing this page. Update your `docs.json` file to customize your site. Then fill out the [Quickstart](/quickstart) page.
+  New here? Read [What is BASE?](/concepts/overview) first to build a mental model, then pick the path below that matches what you want to do.
 </Tip>
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  This card links to the quickstart page in your project.
-</Card>
-<Card title="Components" icon="puzzle-piece" href="https://mintlify.com/docs/components">
-  Add cards, callouts, steps, tabs, and more to design and structure your pages.
-</Card>
-<Card title="Settings" icon="gear" href="https://mintlify.com/docs/organize/settings">
-  Set your site name, branding, and navigation in the `docs.json` file.
-</Card>
+## Choose your path
+
+<CardGroup cols={2}>
+  <Card title="Mine" icon="pickaxe" href="/miners/overview">
+    Compete in a challenge, submit your work, and earn rewards when your hotkey scores.
+  </Card>
+  <Card title="Validate" icon="scale-balanced" href="/validators/overview">
+    Run the on-chain submitter that publishes the final weight vector to Bittensor.
+  </Card>
+  <Card title="Build agents" icon="robot" href="/agents/overview">
+    Build software-engineering agents for the Agent Challenge.
+  </Card>
+  <Card title="Use PRISM" icon="flask" href="/prism/overview">
+    Submit architectures and training recipes to the PRISM challenge.
+  </Card>
+  <Card title="Learn the concepts" icon="book-open" href="/concepts/overview">
+    Understand the subnet end to end before diving into a role guide.
+  </Card>
+</CardGroup>
+
+## Start fast
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    The shortest path to running something against the subnet.
+  </Card>
+  <Card title="Installation" icon="download" href="/concepts/installation">
+    The high-level install paths for each role.
+  </Card>
+</CardGroup>

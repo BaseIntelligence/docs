@@ -1,0 +1,59 @@
+---
+title: "Validator CLI"
+description: "platform validator run: start a normal validator that evaluates challenges and submits weights on-chain."
+icon: "shield-check"
+---
+
+The `platform validator` group runs the normal validator. Its group help is `Run normal validator components` (`base/src/platform_network/cli_app/main.py:60`).
+
+## platform validator run
+
+Starts a validator that fetches the active challenge set from the registry, runs evaluations through the challenge orchestrator, and submits computed weights on-chain on a fixed interval (`base/src/platform_network/cli_app/main.py:834-854`).
+
+| Option | Default | Source |
+|--------|---------|--------|
+| `--config` | `config/validator.example.yaml` | `base/src/platform_network/cli_app/main.py:835` |
+
+```bash
+platform validator run --config /etc/platform/validator.yaml
+```
+
+## What `run` reads from config
+
+All values come from the `validator.*` section of your settings file (`base/src/platform_network/config/settings.py:41-52`).
+
+| Setting | Default | Role in `run` | Source |
+|---------|---------|---------------|--------|
+| `registry_url` | `https://chain.platform.network` | Endpoint the validator polls for the active challenge set. | `base/src/platform_network/config/settings.py:42` |
+| `registry_retry_seconds` | `15` | Backoff between registry fetch retries. | `base/src/platform_network/config/settings.py:43` |
+| `weights_url` | `None` | Override endpoint for fetching master weights; falls back to `registry_url` when unset. | `base/src/platform_network/config/settings.py:44`, `:50-52` |
+| `weights_interval_seconds` | `360` | How often `run` submits the latest weights. | `base/src/platform_network/config/settings.py:45` |
+| `weights_timeout_seconds` | `15.0` | HTTP timeout when fetching weights. | `base/src/platform_network/config/settings.py:46` |
+| `weights_retries` | `3` | Retry count for the weights client. | `base/src/platform_network/config/settings.py:47` |
+| `weights_freshness_seconds` | `720` | Maximum age of weights the validator will accept before treating them as stale. | `base/src/platform_network/config/settings.py:48` |
+
+<Tip>
+  The effective weights endpoint is `weights_url` if set, otherwise `registry_url` (`base/src/platform_network/config/settings.py:50-52`). Leave `weights_url` empty to read weights from the same host that serves the registry.
+</Tip>
+
+## Wallet and chain
+
+`validator run` builds an on-chain submit runtime, so it needs valid wallet and chain settings from the `network.*` section. See [Settings reference](/reference/settings) for `network.wallet_name`, `network.wallet_hotkey`, `network.chain_endpoint`, and `network.netuid` (`base/src/platform_network/config/settings.py:10-17`).
+
+<Card title="Configure your validator" icon="gear" href="/reference/config-examples">
+  See the annotated `validator.example.yaml` for a complete, ready-to-edit configuration.
+</Card>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Validator network" icon="shield-halved" href="/architecture/validator-network">
+    The submit-only on-chain process `validator run` starts.
+  </Card>
+  <Card title="Run a validator" icon="play" href="/validators/running">
+    The full operational guide for running a validator.
+  </Card>
+  <Card title="Weights API" icon="scale-balanced" href="/reference/api-weights">
+    The weight vector the validator reads and submits.
+  </Card>
+</CardGroup>

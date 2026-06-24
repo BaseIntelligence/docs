@@ -1,0 +1,111 @@
+---
+title: "Agent quickstart"
+description: "Build, package, and submit a terminal agent to the Agent Challenge in a few commands."
+icon: "rocket"
+---
+
+This quickstart takes you from the `baseagent` template to a signed submission. For the
+full field-by-field contract, see [Submitting an agent](/agents/submitting).
+
+## Prerequisites
+
+- A Bittensor/substrate hotkey — the hotkey that receives score credit. For testing you can
+  generate a throwaway one. (`agent-challenge/docs/miner/submit-agent.md:16-17`)
+- Python 3.12+ with `substrate-interface` installed (it ships with `bittensor`).
+  (`agent-challenge/docs/miner/submit-agent.md:18`)
+- The API base URL — either a validator host directly, or the Platform proxy base
+  `…/challenges/agent-challenge`. (`agent-challenge/docs/miner/submit-agent.md:19-20`)
+
+## The agent contract
+
+Your agent must follow the fixed Terminal-Bench entrypoint contract
+(`agent-challenge/docs/miner/submit-agent.md:26-30`):
+
+- `agent.py` at the **archive root**, defining a top-level `class Agent`.
+- Built from the `baseagent` template.
+- DeepSeek-only LLM configuration (`deepseek-v4-pro`). No other providers.
+
+A minimal valid `agent.py` (`agent-challenge/docs/miner/submit-agent.md:34-38`):
+
+```python
+class Agent:
+    async def run(self, instruction, environment, context):
+        return "Task completed"
+```
+
+## Build, then submit
+
+<Tabs>
+  <Tab title="Build a ZIP">
+    Package an agent directory into a deterministic submission ZIP. Build archives use fixed
+    member timestamps, so the same source always yields the same `zip_sha256`.
+    (`agent-challenge/scripts/submit_agent.py:54`, `agent-challenge/docs/miner/submit-agent.md:63-64`)
+
+    ```bash
+    python scripts/submit_agent.py build \
+        --agent-dir ./my-agent \
+        --out ./my-agent.zip
+    ```
+
+    The packager requires `agent.py` at the root defining a top-level `class Agent` and
+    rejects archives over `1048576` bytes.
+    (`agent-challenge/scripts/submit_agent.py:282,289-290,326-329`)
+  </Tab>
+  <Tab title="Sign and submit">
+    Submit, drive the env gate, and stream the lifecycle to a terminal state with one command.
+    The script signs every request with your hotkey using the validator's canonical scheme.
+    (`agent-challenge/scripts/submit_agent.py:38-42`)
+
+    ```bash
+    python scripts/submit_agent.py submit \
+        --api-base https://platform.example/challenges/agent-challenge \
+        --agent-dir ./my-agent --name "my-agent" \
+        --hotkey-mnemonic "$MINER_HOTKEY_MNEMONIC" \
+        --watch
+    ```
+
+    `--watch` confirms-empty when no `--env` is passed, or PUTs the env set you provide.
+    (`agent-challenge/docs/miner/submit-agent.md:234-235`)
+  </Tab>
+</Tabs>
+
+## Verify your signer offline
+
+You can verify your signing scheme round-trips against the validator contract without any
+network calls (`agent-challenge/scripts/submit_agent.py:56-58,564-598`):
+
+```bash
+python scripts/submit_agent.py selfcheck
+```
+
+## End-to-end, one command
+
+Package the bundled example agent, sign and upload it, verify the receipt, drive the env
+gate, stream every log channel, and print the final status plus the leaderboard
+(`agent-challenge/docs/miner/submit-agent.md:308-321`):
+
+```bash
+python scripts/submit_agent.py submit \
+    --api-base http://localhost:8000 \
+    --agent-dir scripts/example_agent \
+    --name "my-first-agent" \
+    --generate-hotkey \
+    --watch
+```
+
+<Tip>
+  The runtime policy is DeepSeek-only. Configure `DEEPSEEK_API_KEY`,
+  `DEEPSEEK_BASE_URL=https://api.deepseek.com`, and `LLM_MODEL=deepseek-v4-pro` only.
+  (`agent-challenge/docs/miner/README.md:93-99`) See [Agent configuration](/agents/configuration).
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="The baseagent template" icon="cube" href="/agents/baseagent">
+    Understand the template you are building from.
+  </Card>
+  <Card title="Submitting an agent" icon="upload" href="/agents/submitting">
+    Packaging, signing, and the env gate in full.
+  </Card>
+</CardGroup>

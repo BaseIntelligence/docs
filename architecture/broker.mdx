@@ -1,0 +1,114 @@
+---
+title: "Broker"
+description: "The manager-side broker that dispatches short-lived CPU and GPU evaluation jobs to worker nodes as Swarm replicated-jobs, with a strict GPU contract and untrusted-archive validation."
+icon: "diagram-project"
+---
+
+The **broker** runs on the manager and dispatches short-lived evaluation work to
+worker nodes. Challenge services stay on the manager; the broker is the only path
+that places jobs onto the worker pool.
+
+_Source: `docs/architecture.md:44-46`; `src/platform_network/config/settings.py:100-104`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The Docker broker service, the Swarm backend, and the GPU placement contract.
+</Card>
+
+## Job dispatch
+
+The broker dispatches CPU and GPU jobs as Swarm **replicated-jobs** with
+`--restart-condition none`, so an evaluation can never auto-restart:
+
+- CPU jobs are constrained to `node.labels.platform.workload==cpu`.
+- GPU jobs (broker `gpu_count > 0`) are constrained to
+  `node.labels.platform.workload==gpu` and request
+  `--generic-resource NVIDIA-GPU=<N>`.
+
+_Source: `docs/architecture.md:46-49`; `src/platform_network/config/settings.py:103-104`._
+
+The broker listens on its own port and is addressed internally by service name.
+
+_Source: `src/platform_network/config/settings.py:63-65`._
+
+| Setting | Default | Source |
+|---------|---------|--------|
+| `docker.broker_port` | `8082` | `src/platform_network/config/settings.py:64` |
+| `docker.broker_url` | `http://platform-docker-broker:8082` | `src/platform_network/config/settings.py:65` |
+| `docker.broker_node_role` | `manager` | `src/platform_network/config/settings.py:72` |
+| `docker.challenge_placement_constraint` | `node.role==manager` | `src/platform_network/config/settings.py:102` |
+
+The broker enforces an image allowlist scoped to a single trusted registry namespace.
+
+_Source: `src/platform_network/config/settings.py:67-69`._
+
+## The GPU contract
+
+Broker clients request GPUs with `limits.gpu_count`. `gpu_count=None` or an omitted
+field means CPU-only and emits no GPU resource. A positive integer requests that many
+GPUs and is expressed as the Swarm generic resource `--generic-resource NVIDIA-GPU=<N>`.
+The resource name `NVIDIA-GPU` is case-sensitive and must match the
+`node-generic-resources` advertisement in the worker `daemon.json`.
+
+_Source: `docs/architecture.md:73-75`._
+
+GPU placement is node labels plus generic resources only. A GPU job is constrained to
+`node.labels.platform.workload==gpu` and acquires a capacity lease before the service
+is created; the lease is released on cleanup or failure. There is no remote GPU HTTP
+agent and no device-ID scheduling.
+
+_Source: `docs/architecture.md:77`._
+
+## Internal broker endpoints
+
+The broker exposes an internal Docker control surface, used between the master and the
+broker — not part of the public API:
+
+| Endpoint | Source |
+|----------|--------|
+| `POST /v1/docker/run` | `src/platform_network/master/docker_broker.py:669-690` |
+| `POST /v1/docker/cleanup` | `src/platform_network/master/docker_broker.py:692-701` |
+| `POST /v1/docker/list` | `src/platform_network/master/docker_broker.py:703-712` |
+
+Broker calls require a Bearer token plus the `X-Platform-Challenge-Slug` header.
+
+_Source: `src/platform_network/master/docker_broker.py:717-730`._
+
+## Archive validation
+
+Broker archive uploads are treated as untrusted input. The Swarm broker path rejects
+absolute paths, parent traversal, links, and device members before extraction, and
+malformed broker images are rejected before any service is created.
+
+_Source: `docs/security.md:41-43`._
+
+## Cleanup
+
+Job cleanup is two-layered. The broker `/v1/docker/cleanup` path removes the Swarm
+service and releases the workload and GPU ledger entries on success and failure. The
+manager-only supervisor timeout-reaper independently reaps jobs that exceed their
+timeout, so a crashed or unreachable challenge cannot leak long-running services.
+
+_Source: `docs/security.md:45`._
+
+<Tip>
+Broker-created challenge jobs must not receive the host Docker socket; the default
+socket-grant allowlist is empty. The privileged Docker-in-Docker escape hatch is
+covered on the [Security model](/architecture/security) page.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Swarm and miner pool" icon="docker" href="/architecture/swarm">
+    The worker pool the broker dispatches to.
+  </Card>
+  <Card title="Supervisor" icon="heart-pulse" href="/architecture/supervisor">
+    The timeout-reaper that backstops broker cleanup.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`). Paths prefixed with
+`src/platform_network/` are the internal Python package.

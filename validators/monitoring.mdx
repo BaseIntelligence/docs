@@ -1,0 +1,88 @@
+---
+title: "Monitoring & logs"
+description: "Read validator log output and confirm weights are being submitted."
+---
+
+The validator logs through the shared logging setup. Logging is configured at
+startup and defaults to structured JSON
+(`src/platform_network/observability/logging.py:21-28`,
+`config/validator.example.yaml:36`).
+
+## Log format
+
+With `log_json: true` (the default), each record is emitted as a JSON object
+with a timestamp, level, logger name, and message
+(`src/platform_network/observability/logging.py:8-18`,
+`src/platform_network/config/settings.py:113`). Set `log_json: false` for a
+plain text formatter (`src/platform_network/observability/logging.py:24-26`).
+
+## What to watch in the runtime
+
+The full runtime logs at these points:
+
+- A registry sync failure is logged and retried on the next pass
+  (`validator/normal_runner.py:114`).
+- A weights fetch failure is logged
+  (`validator/normal_runner.py:75`).
+- A skipped submission is logged with the reason, for example a stale or expired
+  payload (`validator/normal_runner.py:80`).
+- A submission rejected by the subtensor is logged
+  (`validator/normal_runner.py:89`).
+- A submission that is not configured logs a warning
+  (`validator/normal_runner.py:70`).
+
+## What to watch in the submitter
+
+The submit-only process logs each iteration in detail
+(`deploy/swarm/submitter/run_submitter.py`):
+
+<Steps>
+  <Step title="Startup identity">
+    Logs the weights URL, netuid, interval, freshness, and the public hotkey
+    SS58 address (`deploy/swarm/submitter/run_submitter.py:65-87`).
+  </Step>
+  <Step title="Each fetch">
+    Logs `netuid`, `n_uids`, `n_weights`, and `computed_at` for the fetched
+    vector (`deploy/swarm/submitter/run_submitter.py:117-123`).
+  </Step>
+  <Step title="Each submit">
+    On success, logs `netuid` and the number of weights submitted on-chain
+    (`deploy/swarm/submitter/run_submitter.py:140-144`).
+  </Step>
+</Steps>
+
+## Confirm connectivity
+
+Print the live registry the validator reads to confirm it can reach the master
+(`src/platform_network/cli_app/main.py:943-948`):
+
+```bash
+platform registry print --config config/validator.yaml
+```
+
+## Service logs
+
+When the submitter runs as a systemd unit, read its logs with `journalctl`. The
+unit is `platform-submitter.service`
+(`deploy/swarm/submitter/platform-submitter.service:29`):
+
+```bash
+journalctl -u platform-submitter.service -f
+```
+
+## Docker log rotation
+
+On the validator node, the Docker daemon config caps log files at `50m` with
+`5` files and enables `live-restore`
+(`deploy/swarm/daemon.validator.json:1-8`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="wrench" href="/validators/troubleshooting">
+    Map a log line to a fix.
+  </Card>
+  <Card title="Weight setting" icon="scale-balanced" href="/validators/weight-setting">
+    Why a submission may be skipped.
+  </Card>
+</CardGroup>

@@ -1,0 +1,85 @@
+---
+title: "Weight setting"
+description: "The validator weight-setting cadence and the on-chain submit path."
+---
+
+The validator does not compute scores. The master computes the final UID weight
+vector, and the validator fetches it and submits it on-chain. This page covers
+the cadence and the validation the validator applies before every submission.
+
+## The submit loop
+
+The submit loop calls `submit_latest_weights` on a fixed interval through
+`run_epoch_loop` (`src/platform_network/cli_app/main.py:825-831`,
+`bittensor/validator_loop.py:10-18`). The loop runs the callback, then sleeps
+the interval, then repeats (`bittensor/validator_loop.py:13-18`).
+
+## Cadence
+
+| Cadence | Default | Source |
+|---------|---------|--------|
+| Validator submit interval | **360 s** | `config/validator.example.yaml:19`, `src/platform_network/config/settings.py:45` |
+| Master epoch interval | **360 s** | `config/master.example.yaml:14`, `src/platform_network/config/settings.py:28` |
+| Weights freshness ceiling | **720 s** | `config/validator.example.yaml:22`, `src/platform_network/config/settings.py:48` |
+
+The validator submit interval (`weights_interval_seconds`) and the master epoch
+interval (`epoch_interval_seconds`) share the same default of 360 seconds. The
+supervisor's compute-only weights task also runs on the master's
+`epoch_interval_seconds` (`src/platform_network/supervisor/weights.py:89-101`).
+
+## What happens each tick
+
+<Steps>
+  <Step title="Fetch the latest vector">
+    The validator fetches the master's vector from `GET /v1/weights/latest`
+    (`validator/weights_client.py:18-30`).
+  </Step>
+  <Step title="Validate the payload">
+    The runner rejects the payload if any check fails
+    (`validator/normal_runner.py:93-107`):
+
+    - the payload `netuid` does not match the configured netuid
+    - the payload has expired (`expires_at` is in the past)
+    - the payload is stale (older than `weights_freshness_seconds`)
+    - the `uids` vector is empty
+    - the `weights` vector is empty
+    - `uids` and `weights` lengths differ
+  </Step>
+  <Step title="Submit on-chain">
+    If the payload passes, the validator calls `set_weights` with the hotkey
+    wallet (`validator/normal_runner.py:84`,
+    `bittensor/weight_setter.py:27-44`). The call uses
+    `wait_for_inclusion=False` and `wait_for_finalization=False`
+    (`bittensor/weight_setter.py:39-40`).
+  </Step>
+  <Step title="Handle rejection">
+    A subtensor rejection is detected and logged, and the tick returns without
+    raising (`validator/normal_runner.py:88-90`,
+    `bittensor/weight_setter.py:7-18`).
+  </Step>
+</Steps>
+
+## Freshness ceiling
+
+The freshness check compares `now - computed_at` against
+`weights_freshness_seconds`, which defaults to **720 seconds**
+(`validator/normal_runner.py:99`, `src/platform_network/config/settings.py:48`).
+A vector older than this ceiling is skipped, so the validator never submits a
+stale vector even if a fetch succeeds.
+
+## If submission is not configured
+
+If the weights client, weight setter, or netuid is not configured,
+`submit_latest_weights` logs a warning and returns without submitting
+(`validator/normal_runner.py:64-71`).
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="The submitter" icon="paper-plane" href="/validators/submitter">
+    The submit-only on-chain process.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/validators/configuration">
+    Tune the cadence and freshness values.
+  </Card>
+</CardGroup>

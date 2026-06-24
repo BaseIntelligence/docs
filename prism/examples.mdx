@@ -1,0 +1,102 @@
+---
+title: "Examples"
+description: "A complete, runnable two-script PRISM bundle: the tiny ~1M-parameter example with architecture.py, training.py, and prism.yaml."
+icon: "code"
+---
+
+This page walks through the minimal, valid PRISM submission shipped in the source repository: a weight-tied ~1.05M-parameter decoder transformer split into the two-script contract.
+
+_Source: `examples/tiny-1m/README.md:1-13`._
+
+## Layout
+
+```text
+examples/tiny-1m/
+  prism.yaml         # declares the architecture + training entrypoints and the tokenizer
+  architecture.py    # exposes build_model(ctx); defines the model only
+  training.py        # exposes train(ctx); the miner-owned loop
+```
+
+- `architecture.py` exposes `build_model(ctx)` and is pure: it never reads data, opens files, or touches the network.
+- `training.py` exposes `train(ctx)`: it forces the seed, builds the model via `architecture.py`, reads the read-only locked train split from `ctx.data_dir`, tokenizes with the pre-staged gpt2 reference tokenizer (offline), runs a single-node multi-GPU-safe loop, and writes only under `ctx.artifacts_dir`.
+
+_Source: `examples/tiny-1m/README.md:6-20`._
+
+## The manifest
+
+```yaml
+architecture:
+  entrypoint: architecture.py
+training:
+  entrypoint: training.py
+tokenizer: gpt2
+```
+
+This manifest omits `kind`, so the submission defaults to the `full` mode. See [Submitting to PRISM](/prism/submit) for the three modes.
+
+_Source: `examples/tiny-1m/prism.yaml:1-5`; `src/prism_challenge/evaluator/components.py:22`._
+
+## A minimal architecture
+
+```python
+import torch
+
+class TinyModel(torch.nn.Module):
+    def __init__(self, vocab_size):
+        super().__init__()
+        self.embedding = torch.nn.Embedding(vocab_size, 8)
+        self.linear = torch.nn.Linear(8, vocab_size)
+
+    def forward(self, tokens):
+        return self.linear(self.embedding(tokens))
+
+def build_model(ctx):
+    return TinyModel(ctx.vocab_size)
+```
+
+_Source: `docs/submissions.md:137-153`._
+
+## A minimal training entrypoint
+
+```python
+from architecture import build_model
+
+def train(ctx):
+    model = build_model(ctx)
+    # construct the optimizer/schedule, read ctx.data_dir, tokenize, run the loop,
+    # handle multi-GPU, and write only under ctx.artifacts_dir.
+    ...
+```
+
+The container resolves `architecture.py::build_model` and `training.py::train`, forces the seed, launches torchrun, and captures the online loss itself.
+
+_Source: `docs/submissions.md:157-168`._
+
+## How it is scored
+
+The challenge re-executes `train(ctx)` under a forced random initialization on the locked FineWeb-Edu train split, captures the single-pass online (predict-then-train) loss itself, and computes the prequential bits-per-byte score with a held-out delta tie-breaker. Any value this submission reports and any manifest it writes are ignored; the challenge authors `prism_run_manifest.v2.json`.
+
+_Source: `examples/tiny-1m/README.md:22-27`._
+
+## Submit the bundle
+
+Submit the directory as a `.zip` bundle through the public route (when enabled) or let the BASE proxy forward it in production.
+
+```http
+POST /v1/submissions
+Content-Type: application/json
+```
+
+```json
+{
+  "filename": "project.zip",
+  "code": "<base64 zip payload>",
+  "metadata": {}
+}
+```
+
+_Source: `examples/tiny-1m/README.md:29-33`; `src/prism_challenge/routes.py:32-33`._
+
+<Tip>
+For the field-by-field contract, see [Submitting to PRISM](/prism/submit) and [Providing context](/prism/context). For the limits this example respects, see [Constraints](/prism/constraints).
+</Tip>

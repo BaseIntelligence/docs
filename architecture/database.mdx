@@ -1,0 +1,112 @@
+---
+title: "Database and registry"
+description: "The two-tier data model: a shared control-plane PostgreSQL private to the master and per-challenge SQLite on each challenge's /data Swarm volume."
+icon: "database"
+---
+
+The subnet keeps two strictly separated stores: a **shared control-plane PostgreSQL**
+for master and validator state, and a **per-challenge SQLite** database on each
+challenge's `/data` Swarm volume. A challenge never receives the control-plane
+credential.
+
+_Source: `docs/architecture.md:42`, `docs/architecture.md:79-81`; `docs/security.md:7-9`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  The control-plane database settings, the challenge SQLite runtime, and the
+  registry state.
+</Card>
+
+## Control-plane PostgreSQL
+
+Master and validator control-plane state uses a single shared PostgreSQL-compatible
+database URL, addressed by `PLATFORM_DATABASE_URL`. That URL is private to the
+control-plane process and is never shared with challenge containers.
+
+_Source: `docs/architecture.md:42`; `src/platform_network/config/settings.py:55-56`._
+
+In production the control-plane state must use PostgreSQL loaded from a Docker secret
+or an explicit `PLATFORM_DATABASE_URL`; SQLite is rejected for control-plane state.
+Dev, test, and local runs may use SQLite for master state.
+
+_Source: `docs/security.md:20`._
+
+Relational migrations for the control-plane PostgreSQL live in the `alembic/`
+directory.
+
+_Source: `README.md:165`._
+
+## Per-challenge SQLite
+
+The challenge runtime is SQLite-backed. The master injects `CHALLENGE_DATABASE_URL`
+pointing at the SQLite file on the challenge `/data` Swarm volume:
+
+```text
+sqlite+aiosqlite:////data/challenge.sqlite3
+```
+
+The subnet does not provision a Postgres server per challenge; each challenge owns its
+`/data` volume for the SQLite database, artifacts, analyzer output, and local files. A
+challenge never receives the master or validator control-plane database credential.
+
+_Source: `docs/architecture.md:61`, `docs/architecture.md:79-81`; `docs/challenge-integration.md:18-28`._
+
+## The `/data` volume
+
+The `/data` Swarm volume is the only persistent store for a challenge. By default it
+is **retained** when a challenge service is removed, which protects challenge state
+and the SQLite database from accidental deletion.
+
+_Source: `docs/architecture.md:63`; `docs/challenge-integration.md:72-76`._
+
+### Manual purge
+
+Manual deletion of a retained volume is destructive and should be done only as an
+explicit operator purge. Inspect the slug volume first, then delete only the matching
+slug volume:
+
+```bash
+docker volume ls --filter label=platform.challenge.slug=<slug>
+docker volume rm <challenge-data-volume>
+```
+
+These commands are manual and destructive; the subnet does not provide an automated
+destructive purge.
+
+_Source: `docs/challenge-integration.md:78-88`._
+
+## Registry state
+
+The master tracks active challenges and their emission shares in the registry, with a
+registry state file on the manager.
+
+_Source: `docs/architecture.md:36-38`; `src/platform_network/config/settings.py:32`._
+
+The public registry read is served by the proxy at `GET /v1/registry`; the registry
+response schema is documented in the [Proxy API](/reference/api-proxy) reference.
+
+_Source: `src/platform_network/master/app_admin.py:132-134`._
+
+## Out of scope
+
+This implementation does not include a Postgres server per challenge, automatic
+backups, restore workflows, high availability, connection pooling, storage resize
+workflows, challenge migration automation, or automated destructive purge.
+
+_Source: `docs/architecture.md:83-85`; `docs/challenge-integration.md:90-92`._
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Challenge integration" icon="puzzle-piece" href="/architecture/challenge-integration">
+    The per-challenge SQLite contract in depth.
+  </Card>
+  <Card title="Security model" icon="lock" href="/architecture/security">
+    Why the control-plane credential never reaches a challenge.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`). Paths prefixed with
+`src/platform_network/` are the internal Python package.

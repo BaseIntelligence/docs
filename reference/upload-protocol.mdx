@@ -1,0 +1,138 @@
+---
+title: "Upload protocol"
+description: "The signed submission protocol miners use to upload to a challenge through the subnet master proxy."
+icon: "file-signature"
+---
+
+Miners upload submissions to a challenge through a signed proxy route on the
+subnet master. The master verifies the miner's signature, reserves a one-time
+nonce, then bridges the body to the challenge with verified-identity headers.
+
+## `POST /v1/challenges/{challenge_name}/submissions`
+
+Uploads a signed submission for the named challenge (`app_proxy.py:510-512`,
+`app_proxy.py:424-484`). The challenge must be registered and `active`; otherwise
+the master returns `404` (`app_proxy.py:425`, `app_proxy.py:243-254`).
+
+## Required signature headers
+
+Every upload MUST carry these four headers; a missing header is rejected with
+`401` (`miner_auth.py:159-162`, `miner_auth.py:230-234`):
+
+| Header | Meaning | Source |
+|--------|---------|--------|
+| `X-Hotkey` | The miner's SS58 hotkey address | `miner_auth.py:159` |
+| `X-Signature` | Signature over the canonical message | `miner_auth.py:160` |
+| `X-Nonce` | Unique per-request nonce | `miner_auth.py:161` |
+| `X-Timestamp` | Unix timestamp (integer seconds) | `miner_auth.py:162` |
+
+An optional `X-Submission-Filename` header is forwarded to the challenge when
+present (`app_proxy.py:463-465`).
+
+## Canonical message
+
+The signature is computed over this exact byte string (`canonical_upload_message`,
+`miner_auth.py:96-111`):
+
+```
+platform-upload-v1:{netuid}:{challenge_slug}:{METHOD}:{path}:{hotkey}:{nonce}:{timestamp}:{body_hash}
+```
+
+Where (`miner_auth.py:107-111`, `miner_auth.py:170-180`):
+
+- `netuid` — the subnet id, `100` for BASE (`config/settings.py:12`).
+- `challenge_slug` — the active challenge's slug (`app_proxy.py:438`).
+- `METHOD` — the HTTP method, upper-cased (`miner_auth.py:109`).
+- `path` — the request path being signed, i.e. the public submissions path
+  (`app_proxy.py:435-436`).
+- `hotkey`, `nonce`, `timestamp` — the values from the matching headers
+  (`miner_auth.py:171-178`).
+- `body_hash` — `sha256(body).hexdigest()` of the raw request body
+  (`miner_auth.py:170`).
+
+The signature is verified against the hotkey as a substrate SS58 keypair; a
+`0x`-prefixed hex signature is hex-decoded before verification
+(`verify_substrate_signature`, `miner_auth.py:114-121`; `_decode_signature`,
+`miner_auth.py:222-227`).
+
+## Verification rules
+
+The master enforces, in order:
+
+1. **Body size** — bodies larger than the configured limit (default
+   `2_000_000` bytes) return `413` (`app_proxy.py:274`, `app_proxy.py:427-431`).
+2. **Timestamp freshness** — if `abs(now - timestamp)` exceeds the TTL (default
+   `300` seconds) the signature is rejected as stale (`app_proxy.py:272`,
+   `miner_auth.py:163-169`).
+3. **Signature** — an invalid signature is rejected (`miner_auth.py:181-182`).
+4. **Hotkey registration** — by default the hotkey must be registered in the
+   metagraph; an unknown hotkey is rejected and UID `0` is blocked
+   (`app_proxy.py:275`, `miner_auth.py:200-219`).
+5. **Nonce replay** — the nonce is reserved once; a repeat returns `409`
+   (`miner_auth.py:184-191`, `app_proxy.py:440-441`).
+
+## Response and error codes
+
+| Status | When | Source |
+|--------|------|--------|
+| `401` | Missing/invalid signature, stale timestamp, or unknown hotkey | `app_proxy.py:442-443` |
+| `409` | Nonce already used (replay) | `app_proxy.py:440-441` |
+| `413` | Submission larger than the body limit | `app_proxy.py:427-431` |
+| `404` | Challenge not registered or not active | `app_proxy.py:243-254` |
+| `502` | Challenge unreachable, or challenge token unavailable | `app_proxy.py:446-449`, `app_proxy.py:475-478` |
+
+On success, the master bridges the body to the challenge and returns the
+challenge's response (status, body, and content type) unchanged
+(`app_proxy.py:479-484`). The response body shape is owned by the challenge and
+is not defined in the master.
+
+## What the master forwards to the challenge
+
+After verification, the master POSTs the body to the challenge's internal bridge
+route `/internal/v1/bridge/submissions` (`app_proxy.py:470`) with these headers
+(`app_proxy.py:450-465`):
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <challenge token>` (`app_proxy.py:451`) |
+| `X-Platform-Challenge-Slug` | the challenge slug (`app_proxy.py:452`) |
+| `X-Platform-Verified-Hotkey` | the verified hotkey (`app_proxy.py:453`) |
+| `X-Platform-Verified-Nonce` | the verified nonce (`app_proxy.py:454`) |
+| `X-Platform-Request-Hash` | the body hash (`app_proxy.py:455`) |
+| `X-Platform-Verified-Uid` | the resolved UID, when available (`app_proxy.py:461-462`) |
+
+## Example
+
+```bash
+# Construct the canonical message, sign it with your hotkey, then upload.
+# netuid=100, METHOD=POST, path=/v1/challenges/agent-challenge/submissions
+BODY_HASH=$(sha256sum submission.bin | cut -d' ' -f1)
+
+curl -s -X POST "$MASTER_URL/v1/challenges/agent-challenge/submissions" \
+  -H "X-Hotkey: $HOTKEY_SS58" \
+  -H "X-Signature: $SIGNATURE_HEX" \
+  -H "X-Nonce: $NONCE" \
+  -H "X-Timestamp: $TIMESTAMP" \
+  -H "Content-Type: application/octet-stream" \
+  --data-binary @submission.bin
+```
+
+<Tip>
+The `path` you sign must match the request path exactly
+(`/v1/challenges/{challenge_name}/submissions`), and `body_hash` must be the
+SHA-256 hex digest of the exact bytes you send.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Security model" icon="shield-halved" href="/architecture/security">
+    How signed uploads are verified at the proxy.
+  </Card>
+  <Card title="Submit to a challenge" icon="upload" href="/miners/submitting">
+    The miner-side guide to building and signing a submission.
+  </Card>
+  <Card title="Proxy API" icon="shuffle" href="/reference/api-proxy">
+    The proxy routes that sit alongside this upload.
+  </Card>
+</CardGroup>

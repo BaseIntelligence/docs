@@ -1,0 +1,115 @@
+---
+title: "Master node"
+description: "The Docker Swarm manager node that owns the registry, the single public API, the control plane, and final weight computation for the subnet."
+icon: "server"
+---
+
+The **master** is the Docker Swarm manager node. It owns the central registry,
+admin operations, the Swarm challenge lifecycle, challenge tokens, emission
+configuration, and final weight computation. The same node also hosts every
+long-lived challenge service.
+
+_Source: `docs/architecture.md:36-40`; `README.md:32-36`._
+
+<Card title="Source repository" icon="github" href="https://github.com/BaseIntelligence/base">
+  Master proxy, registry, weight service, and the Swarm bring-up that runs them.
+</Card>
+
+## The single public API
+
+The master hosts one proxy that serves the whole public surface on a single port:
+the `/v1/registry` and `/v1/weights/latest` reads, the `/health` check, the
+`/challenges/*` passthrough that bridges miner traffic to challenges, and the
+token-gated admin routes.
+
+_Source: `docs/architecture.md:38`, `docs/architecture.md:40`; `README.md:262-265`._
+
+The proxy app is built by `create_proxy_app`. When a runtime controller is wired in,
+the admin/registry router (`build_admin_router`) is mounted onto the same app, so
+there is no separate admin listener or admin port.
+
+_Source: `src/platform_network/master/app_proxy.py:263`, `src/platform_network/master/app_proxy.py:534-548`; `src/platform_network/master/app_admin.py:66`._
+
+| Route | Auth | Defined at |
+|-------|------|-----------|
+| `GET /health` | none | `src/platform_network/master/app_proxy.py:320-322` |
+| `GET /v1/registry` | none (public read) | `src/platform_network/master/app_admin.py:132-134` |
+| `GET /v1/weights/latest` | none (public read) | `src/platform_network/master/app_admin.py:136-157` |
+| `GET /challenges/{slug}` passthrough | passthrough | `src/platform_network/master/app_proxy.py:520-525` |
+| `/admin`, `/v1/admin/challenges/*` | admin token | `src/platform_network/master/app_admin.py:176`, `:202-326` |
+
+Full request/response detail for these routes lives in the
+[API reference](/reference/api).
+
+## Ports
+
+The manager publishes its control-plane services on fixed host ports. The default
+in-container service ports are the proxy on `8080` and the broker on `8082`; the
+Swarm installer publishes them on the host as `18080` (proxy) and `18082` (broker).
+
+_Source: `docs/master/README.md:11-16`; `README.md:262-264`._
+
+`/v1/registry` and `/v1/weights/latest` are served by the proxy on the public port;
+there is no separate admin service or port.
+
+_Source: `README.md:265`._
+
+## What the master owns
+
+- **Registry** — active challenges, their emission shares, and the registry state
+  file at `/var/lib/platform/registry.json`.
+
+  _Source: `docs/architecture.md:36-38`; `src/platform_network/config/settings.py:32`._
+- **Challenge services** — the master runs every active challenge service on the
+  host, pinned with the placement constraint `node.role==manager`.
+
+  _Source: `docs/architecture.md:40`; `src/platform_network/config/settings.py:102`._
+- **Control-plane state** — a single shared PostgreSQL-compatible database addressed
+  by `PLATFORM_DATABASE_URL`, private to the control-plane process and never shared
+  with challenge containers.
+
+  _Source: `docs/architecture.md:42`; `docs/security.md:7`._
+- **Weight computation** — the master collects, normalizes, and serves the final
+  vector; the on-chain submitter performs the Bittensor submission.
+
+  _Source: `docs/architecture.md:38`; `README.md:127-135`._
+
+## Epoch cadence
+
+The master recomputes weights on an epoch interval. The default
+`epoch_interval_seconds` is `360`.
+
+_Source: `src/platform_network/config/settings.py:28`._
+
+The end-to-end computation is detailed on the
+[Weights pipeline](/architecture/weights-pipeline) page.
+
+## Supervisor and broker
+
+The master also hosts the [broker](/architecture/broker), which dispatches
+short-lived evaluation jobs to workers, and the [supervisor](/architecture/supervisor),
+a systemd watchdog that runs the manager-only maintenance loops.
+
+_Source: `docs/architecture.md:46`; `docs/master/README.md:39-56`._
+
+<Tip>
+The master node is also the validator / hotkey node in the reference topology, but
+challenge orchestration and on-chain submission are separate concerns — see the
+[Validator network](/architecture/validator-network) page.
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Architecture overview" icon="sitemap" href="/architecture/overview">
+    How the master fits into the whole subnet.
+  </Card>
+  <Card title="Weights pipeline" icon="scale-balanced" href="/architecture/weights-pipeline">
+    What the master computes each epoch.
+  </Card>
+</CardGroup>
+
+## Sources
+
+Citations reference the `base` repository pinned at SHA
+`e33109bfa4f5054928c3b4d429be9cf35d36b166` (see `SOURCES.md`).
