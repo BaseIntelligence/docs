@@ -2,7 +2,7 @@
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
   "name": "BASE",
-  "description": "Documentation for BASE, the Bittensor subnet (netuid 100) for decentralized collaborative AI research through competitive challenges.",
+  "description": "Documentation for BASE, the Bittensor subnet (netuid 100): validators run infrastructure; miners compete inside pluggable challenges.",
   "colors": {
     "primary": "#d91f35",
     "light": "#d91f35",
@@ -29,11 +29,11 @@
       "og:type": "website",
       "og:site_name": "BASE",
       "og:title": "BASE Documentation",
-      "og:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "og:description": "Validators run BASE. Miners compete inside challenges on Bittensor netuid 100.",
       "og:image": "/images/og.png",
       "twitter:card": "summary_large_image",
       "twitter:title": "BASE Documentation",
-      "twitter:description": "Build, mine, validate, and compete on BASE — a Bittensor subnet (netuid 100) for decentralized collaborative AI research.",
+      "twitter:description": "Validators run BASE. Miners compete inside challenges on Bittensor netuid 100.",
       "twitter:image": "/images/og.png"
     }
   },
@@ -72,37 +72,6 @@
         ]
       },
       {
-        "tab": "Miners",
-        "icon": "microchip",
-        "groups": [
-          {
-            "group": "Get started",
-            "pages": [
-              "miners/overview",
-              "miners/quickstart",
-              "miners/installation",
-              "miners/wallet-registration"
-            ]
-          },
-          {
-            "group": "Mining",
-            "pages": [
-              "miners/choose-a-challenge",
-              "miners/submitting",
-              "miners/authentication",
-              "miners/monitoring",
-              "miners/troubleshooting"
-            ]
-          },
-          {
-            "group": "Migrate",
-            "pages": [
-              "miners/migration-baseagent"
-            ]
-          }
-        ]
-      },
-      {
         "tab": "Validators",
         "icon": "shield-halved",
         "groups": [
@@ -128,57 +97,86 @@
         ]
       },
       {
-        "tab": "Agent Developers",
-        "icon": "robot",
+        "tab": "Challenges",
+        "icon": "trophy",
         "groups": [
           {
-            "group": "Get started",
+            "group": "Overview",
             "pages": [
-              "agents/overview",
-              "agents/quickstart",
-              "agents/baseagent"
+              "challenges/overview"
             ]
           },
           {
-            "group": "Building agents",
+            "group": "Agent Challenge",
             "pages": [
-              "agents/architecture",
-              "agents/configuration",
-              "agents/tools",
-              "agents/submitting",
-              "agents/evaluation",
-              "agents/best-practices"
+              "challenges/agent-challenge/index",
+              "challenges/agent-challenge/quickstart",
+              "challenges/agent-challenge/submit",
+              "challenges/agent-challenge/attestation-phala",
+              "challenges/agent-challenge/evaluation",
+              "challenges/agent-challenge/key-release",
+              "challenges/agent-challenge/troubleshooting",
+              "challenges/agent-challenge/baseagent",
+              "challenges/agent-challenge/architecture",
+              "challenges/agent-challenge/configuration",
+              "challenges/agent-challenge/tools",
+              "challenges/agent-challenge/best-practices"
+            ]
+          },
+          {
+            "group": "PRISM",
+            "pages": [
+              "challenges/prism/overview",
+              "challenges/prism/quickstart",
+              "challenges/prism/how-it-works",
+              "challenges/prism/submit",
+              "challenges/prism/context",
+              "challenges/prism/scoring",
+              "challenges/prism/constraints",
+              "challenges/prism/examples",
+              "challenges/prism/api",
+              "challenges/prism/operators"
+            ]
+          },
+          {
+            "group": "Additional challenges",
+            "pages": [
+              "challenges/bounty-challenge",
+              "challenges/data-fabrication",
+              "challenges/agent-swe"
+            ]
+          },
+          {
+            "group": "Build a challenge",
+            "pages": [
+              "challenges/creating",
+              "challenges/sdk"
             ]
           }
         ]
       },
       {
-        "tab": "PRISM",
-        "icon": "flask",
+        "tab": "Miner hub",
+        "icon": "microchip",
         "groups": [
           {
-            "group": "Get started",
+            "group": "Start here",
             "pages": [
-              "prism/overview",
-              "prism/quickstart",
-              "prism/how-it-works"
+              "miners/overview",
+              "miners/quickstart",
+              "miners/wallet-registration",
+              "miners/choose-a-challenge"
             ]
           },
           {
-            "group": "Submitting to PRISM",
+            "group": "Shared subnet mechanics",
             "pages": [
-              "prism/submit",
-              "prism/context",
-              "prism/scoring",
-              "prism/constraints",
-              "prism/examples",
-              "prism/api"
-            ]
-          },
-          {
-            "group": "Operators",
-            "pages": [
-              "prism/operators"
+              "miners/authentication",
+              "miners/submitting",
+              "miners/installation",
+              "miners/monitoring",
+              "miners/troubleshooting",
+              "miners/migration-baseagent"
             ]
           }
         ]
@@ -248,40 +246,6 @@
             ]
           }
         ]
-      },
-      {
-        "tab": "Challenges",
-        "icon": "trophy",
-        "groups": [
-          {
-            "group": "Overview",
-            "pages": [
-              "challenges/overview"
-            ]
-          },
-          {
-            "group": "Primary challenges",
-            "pages": [
-              "challenges/agent-challenge",
-              "challenges/prism"
-            ]
-          },
-          {
-            "group": "Additional challenges",
-            "pages": [
-              "challenges/bounty-challenge",
-              "challenges/data-fabrication",
-              "challenges/agent-swe"
-            ]
-          },
-          {
-            "group": "Build a challenge",
-            "pages": [
-              "challenges/creating",
-              "challenges/sdk"
-            ]
-          }
-        ]
       }
     ],
     "global": {
@@ -303,8 +267,8 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Run a miner",
-      "href": "/miners/quickstart"
+      "label": "Choose a challenge",
+      "href": "/challenges/overview"
     }
   },
   "contextual": {

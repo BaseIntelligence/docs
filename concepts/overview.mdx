@@ -1,78 +1,52 @@
 ---
 title: "What is BASE?"
-description: "A plain-language introduction to BASE: a multi-challenge Bittensor subnet running on netuid 100."
+description: "BASE is the multi-challenge Bittensor subnet on netuid 100: validator infrastructure plus pluggable challenges."
 ---
 
-BASE is a **multi-challenge [Bittensor](https://bittensor.com/) [subnet](/concepts/glossary#subnet)**. It lets several independent challenges run under one validator network, routes [miner](/concepts/glossary#miner) traffic to the right challenge, collects each challenge's raw weights, normalizes them into [emissions](/concepts/glossary#emissions), maps miner [hotkeys](/concepts/glossary#hotkey) to Bittensor [UIDs](/concepts/glossary#uid), and publishes the final vector for [validators](/concepts/glossary#validator) to submit on-chain.
+BASE is a **multi-challenge [Bittensor](https://bittensor.com/) [subnet](/concepts/glossary#subnet)**. It lets independent challenges run under one validator network, routes miner traffic to the right challenge, collects raw weights, normalizes [emissions](/concepts/glossary#emissions), maps miner [hotkeys](/concepts/glossary#hotkey) to [UIDs](/concepts/glossary#uid), and publishes the final vector for [validators](/concepts/glossary#validator) to submit on-chain.
+
+## Role split (product truth)
+
+| Role | What they do |
+| --- | --- |
+| **BASE validators** | Run subnet infrastructure: master, proxy, weight setting, submitter, wallet as validator |
+| **Miners** | Compete **inside challenges**; each challenge owns submit path, eval, costs, TEE |
+| **Challenge operators** | Run or configure a challenge service (allowlists, datasets, key release). Not the same as the BASE validator mint |
+| **Challenge authors** | Ship new challenge repos using the create/SDK guides |
+
+Miners do not "mine Base generic." Validators do not complete Agent Challenge TEE self-deploy for miners as the production score path.
 
 ## The subnet, in one picture
 
-Think of BASE as a coordination layer with three moving parts:
-
-- **Challenges** define the actual work. Each one lives in its own repository and owns its submissions, scoring rules, and miner experience.
-- **Miners** pick a challenge, do the work, and submit it.
-- **Validators** publish the final scores to Bittensor so rewards flow.
-
-The subnet is the glue. It runs the challenges together, routes traffic, and turns many separate scores into one normalized weight vector.
+- **Challenges** define the work. Each lives in its own repository and owns submissions, scoring, and miner experience.
+- **Miners** pick a challenge and follow that challenge.
+- **Validators** keep the network weight vector honest on-chain.
 
 ## netuid 100
 
-BASE runs on **netuid 100**. The [netuid](/concepts/glossary#netuid) is the subnet's id on the Bittensor chain. This value is fixed in the canonical configuration.
+BASE runs on **netuid 100**. Configure wallets, submitters, and validators against that netuid.
 
-```python
-class NetworkSettings(BaseModel):
-    name: str = "platform"
-    netuid: int = 100
-```
+## What the subnet does
 
-<Tip>
-  `netuid 100` is the number you configure everywhere you point a wallet, submitter, or validator at the subnet. Source: `src/platform_network/config/settings.py:12`.
-</Tip>
-
-## What the subnet does for you
-
-The subnet coordinates the full lifecycle of a multi-challenge network:
-
-- It tracks active challenges and their emission shares.
-- It runs the active challenge services.
-- It keeps each challenge isolated from the others.
-- Miners interact with a challenge through one public entry point.
-- Each challenge computes its own raw hotkey weights.
-- The subnet normalizes those outputs, applies the configured emissions, and maps hotkeys to UIDs.
-- The on-chain submitter fetches the final vector and submits weights to Bittensor at epoch boundaries.
-
-If one challenge fails, the subnet can isolate that challenge's contribution without taking down the rest.
-
-## Roles at a glance
-
-<CardGroup cols={2}>
-  <Card title="Miners" icon="pickaxe" href="/concepts/miners-and-validators">
-    Choose a challenge, follow its submission rules, and earn when your hotkey scores.
-  </Card>
-  <Card title="Validators" icon="scale-balanced" href="/concepts/miners-and-validators">
-    Run the on-chain submitter that publishes the final normalized vector to Bittensor.
-  </Card>
-  <Card title="Challenge owners" icon="cube" href="/concepts/challenges">
-    Maintain an independent repository, image, scoring logic, and weight contract.
-  </Card>
-  <Card title="Agent developers" icon="robot" href="/agents/overview">
-    Build agents that compete inside a specific challenge.
-  </Card>
-</CardGroup>
+- Tracks active challenges and emission shares
+- Routes `/challenges/{slug}/...`
+- Isolates challenge failure from the rest of the network
+- Normalizes challenge outputs, maps hotkeys to UIDs
+- Supports on-chain submit of the final vector
 
 ## Where to go next
 
 <CardGroup cols={2}>
   <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
-    The end-to-end flow from submission to on-chain weights.
+    Submission to on-chain weights.
   </Card>
-  <Card title="Challenges explained" icon="trophy" href="/concepts/challenges">
-    What a challenge is and which ones run today.
+  <Card title="Miners and validators" icon="users" href="/concepts/miners-and-validators">
+    Role boundaries without mixed messaging.
   </Card>
-  <Card title="Incentive mechanism" icon="coins" href="/concepts/incentive-mechanism">
-    How work turns into rewards.
+  <Card title="Challenges" icon="trophy" href="/challenges/overview">
+    Miner home and challenge catalog.
   </Card>
-  <Card title="Glossary" icon="list" href="/concepts/glossary">
-    Every term, defined.
+  <Card title="Validators" icon="shield-halved" href="/validators/overview">
+    BASE operator path.
   </Card>
 </CardGroup>

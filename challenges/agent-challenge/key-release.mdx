@@ -1,0 +1,92 @@
+---
+title: "RA-TLS golden key release"
+description: "How the eval guest obtains the AES-256 golden key over raw TLS 1.3 on :8701, and how client-trust differs from server CA."
+---
+
+The golden key is a validator-held **AES-256** secret used for AES-256-GCM packaging of oracle / golden task material. Production release is **raw TLS 1.3** with client certificates and dstack RA-TLS extensions. HTTP `POST /release` is disabled in production (404). Do not place a public L7 terminator in front of the listener.
+
+Default bind is conceptual `127.0.0.1:8701`, externalized with an operator tunnel that preserves raw TCP and end-to-end client certificate identity.
+
+## Why key release exists
+
+Eval guests must decrypt golden task material to run honest Terminal-Bench style checks. The key must not:
+
+- ship in miner-visible images
+- appear on public APIs or logs
+- release before the guest proves eval-image measurement and key-release-domain quote alliance
+
+## Guest path (GetTlsKey)
+
+Inside the measured eval guest:
+
+1. dstack **GetTlsKey** materializes mTLS client cert and key (for example under `/run/secrets/ra_tls/`)
+2. Operator injects the **validator server CA** so the guest can verify the key-release listener (`CHALLENGE_PHALA_RA_TLS_SERVER_CA_PEM` / server CA file envs)
+3. Guest dials the listener, presents client cert + key-release-domain quote
+4. On allowlist match and checks, receives `key_b64`; on deny, no key
+
+The guest never invents the validator server root.
+
+## Host path (two CA roles)
+
+Keep these distinct:
+
+| Material | Who installs | Purpose |
+| --- | --- | --- |
+| **Server identity** | Operator on KR host (`KEY_RELEASE_RA_TLS_CERT_FILE` / `KEY_RELEASE_RA_TLS_KEY_FILE`) | Listener server certificate |
+| **Client-trust CA** | Operator on KR host (`KEY_RELEASE_RA_TLS_CA_FILE`) | Server verifies **guest** client certificates (dstack guest issuer) |
+| **Server CA for guest** | Injected into eval guest at deploy (`CHALLENGE_PHALA_RA_TLS_SERVER_CA_*`) | Guest verifies the **validator** listener |
+
+Client-trust CA is **not** the same blob as server CA inject. Operators may harvest the guest **public-only** fullchain (leaf + intermediates, never private keys) from guest logs or a known export path for client-trust install when remote pull is unavailable.
+
+## Server checks
+
+After TLS, the client sends a length-prefixed canonical JSON frame with `schema_version`, `eval_run_id`, `nonce`, `quote_hex`, and `event_log`. Server checks:
+
+1. TLS peer certificate vs RA-TLS quote extensions and allowlisted **eval** measurement
+2. Event log / dual-domain allowlist membership for the eval image
+3. Nonce freshness and rate limits
+4. SPKI digest binding (caller-supplied peer-identity headers are not trusted)
+
+On denial: no golden key, no score path.
+
+Typical env names (operator surface; not miner secrets):
+
+```text
+KEY_RELEASE_RA_TLS_HOST
+KEY_RELEASE_RA_TLS_PORT
+KEY_RELEASE_RA_TLS_CERT_FILE
+KEY_RELEASE_RA_TLS_KEY_FILE
+KEY_RELEASE_RA_TLS_CA_FILE
+CHALLENGE_KEY_RELEASE_ALLOWLIST_FILE
+CHALLENGE_GOLDEN_KEY_FILE
+CHALLENGE_KEY_RELEASE_ACCEPTABLE_TCB
+CHALLENGE_KEY_RELEASE_NONCE_TTL_SECONDS
+```
+
+Guest dial:
+
+```text
+CHALLENGE_PHALA_RA_TLS_CERT_FILE
+CHALLENGE_PHALA_RA_TLS_KEY_FILE
+CHALLENGE_PHALA_RA_TLS_CA_FILE
+CHALLENGE_PHALA_RA_TLS_SERVER_CA_PEM
+CHALLENGE_PHALA_RA_TLS_SERVER_CA_FILE
+```
+
+## Domain bind
+
+Key-release quotes use domain tag `base-agent-challenge-keyrelease-v1` and bind `eval_run_id`, the key-release nonce, and the RA-TLS SPKI digest. A review quote cannot authorize key release. A key-release quote cannot authorize a score.
+
+## Offline HTTP fixture
+
+Local health and nonce helpers may use an offline HTTP surface on `:8700`. That path is not production key release.
+
+## Score conjunction
+
+Score admission requires durable **key-grant** for that eval run in addition to the score-domain quote and allowlist. Missing grant writes **no** accepted score.
+
+## Related
+
+- [Attestation](/challenges/agent-challenge/attestation-phala)
+- [Evaluation](/challenges/agent-challenge/evaluation)
+- [Operator self-deploy (challenge repo)](https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/validator/self-deploy.md)

@@ -1,15 +1,15 @@
 ---
 title: "Challenges explained"
-description: "What a challenge is on BASE, and a tour of the challenges that run on the subnet."
+description: "A challenge is an independent competition plugged into BASE. Miners follow challenge docs; the subnet only coordinates weights."
 ---
 
-A **[challenge](/concepts/glossary#challenge)** is where the actual work happens on BASE. The subnet is the coordination layer; each challenge defines a specific competition with its own rules.
+A **[challenge](/concepts/glossary#challenge)** is where work happens on BASE. The subnet is the coordination layer. Each challenge defines a competition with its own rules.
 
 ## What a challenge is
 
-A challenge is an independent repository and Docker image. It owns its logic, public routes, submissions, scoring data, database schema, and challenge-local files. Challenge state lives in SQLite on the challenge's own `/data` volume, separate from the subnet control plane.
+A challenge is an independent repository and Docker image. It owns logic, public routes, submissions, scoring data, database schema, and challenge-local files. State lives on the challenge's own data volume, separate from the subnet control plane.
 
-Every challenge exposes a small, standard internal contract to the subnet:
+Standard internal contract:
 
 ```text
 GET /health
@@ -17,62 +17,46 @@ GET /version
 GET /internal/v1/get_weights
 ```
 
-The `get_weights` endpoint is how the subnet reads a challenge's raw hotkey weights. It is authenticated with a per-challenge shared token and is never exposed through the public proxy.
+`get_weights` is how BASE reads raw hotkey weights. It is token-authenticated and not exposed on the public proxy.
 
-<Tip>
-  Because each challenge defines its own artifact format, scoring rubric, and leaderboard, you cannot assume two challenges share the same rules. Always read the specific challenge guide before you submit.
-</Tip>
-
-## The challenges
+## Primary challenges
 
 <Tabs>
   <Tab title="Agent Challenge">
-    Agent Challenge rewards [miners](/concepts/glossary#miner) for building software-engineering agents that solve benchmark tasks. A miner submits an agent artifact, the challenge assigns deterministic tasks, evaluates the agent in isolated benchmark environments, and converts valid results into subnet weights.
+    Software-engineering agents. Production scoring is miner self-deploy on Phala Intel TDX with attested review, RA-TLS golden key release, and Terminal-Bench eval from a baked guest cache. No Base LLM gateway on the scored path.
 
-    Submitted agents build on the `baseagent` base implementation and run against a fixed model provider for cost control.
-
-    [Build agents →](/agents/overview)
+    [Agent Challenge miner pack →](/challenges/agent-challenge)
   </Tab>
   <Tab title="PRISM">
-    PRISM measures a model's ability to learn from scratch. Miners submit two scripts: a model `architecture.py` and a custom `training.py` loop. The challenge owns the locked dataset and the evaluation, re-executes the miner's training loop under a forced random initialization, and computes the score itself in bits-per-byte.
+    Learn-from-scratch neural architecture search. Miners submit two scripts; the challenge re-executes training and computes prequential bits-per-byte.
 
-    [Use PRISM →](/prism/overview)
+    [PRISM miner pack →](/challenges/prism/overview)
   </Tab>
 </Tabs>
 
-Agent Challenge and PRISM are the primary challenges that run on the subnet today.
-
 ## Additional challenges
 
-The subnet routes traffic by slug, so more challenges can run alongside the primary ones. These are earlier-stage:
-
 <Accordion title="Bounty Challenge">
-  Bounty Challenge is for project bounties that need human judgment. It rewards miners who turn an owner-created brief into the best finished implementation, design, or product improvement. The owner assigns emissions to the hotkeys that produced the best work, and the subnet normalizes them into weights.
-
-  [Read more →](/challenges/bounty-challenge)
+  Owner-reviewed project bounties that need human judgment. [Guide →](/challenges/bounty-challenge)
 </Accordion>
 
 <Accordion title="Data Fabrication">
-  Data Fabrication rewards miners who generate useful agentic coding conversation datasets. Miners submit a complete dataset-generation harness; the subnet executes and reviews it, then rewards hotkeys that produce high-quality, diverse, verifiable, and original examples.
-
-  [Read more →](/challenges/data-fabrication)
+  Dataset-generation harnesses for agentic coding conversations. [Guide →](/challenges/data-fabrication)
 </Accordion>
 
 <Accordion title="Agent SWE">
-  Agent-SWE turns real repositories into benchmark tasks for autonomous software-engineering agents, with a fail-to-pass scoring contract built on real project structure, real tests, and Docker evaluation.
-
-  [Read more →](/challenges/agent-swe)
+  Real repositories as fail-to-pass agent benchmarks. [Guide →](/challenges/agent-swe)
 </Accordion>
 
 ## How a challenge plugs in
 
-The subnet routes public requests to the correct isolated challenge service by slug, reads the protected `get_weights` contract, and normalizes the raw scores into final subnet weights. Challenge owners maintain everything else independently.
+BASE routes public requests by slug, reads protected `get_weights`, and normalizes scores. Everything else is challenge-owned.
 
 <CardGroup cols={2}>
-  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
-    See where challenges sit in the end-to-end flow.
+  <Card title="Challenges tab" icon="trophy" href="/challenges/overview">
+    Full catalog and miner packs.
   </Card>
-  <Card title="All challenges" icon="trophy" href="/challenges/overview">
-    The full challenge catalog and guides.
+  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
+    End-to-end flow.
   </Card>
 </CardGroup>

@@ -1,0 +1,146 @@
+---
+title: "Submitting to PRISM"
+description: "The two-script contract, the prism.yaml manifest, and the three submit modes: full, architecture_only, and training_for_arch."
+icon: "upload"
+---
+
+A PRISM submission is a **two-script** bundle: a `.zip` archive (or a directory snapshot) containing a model `architecture.py` and a training `training.py`. The miner owns the model and the training loop; the challenge owns the dataset and the scoring. A single combined module no longer satisfies the contract.
+
+_Source: `docs/submissions.md:1-10`; `src/prism_challenge/evaluator/components.py:99-103`._
+
+## The two-script contract
+
+A bundle must contain two **distinct** scripts.
+
+`architecture.py` exposes a model factory:
+
+```python
+def build_model(ctx):
+    return MyModel(ctx.vocab_size)
+```
+
+`build_model(ctx)` must return a `torch.nn.Module`. It must not read data, open files, touch the network, or reference the dataset.
+
+`training.py` exposes the miner-owned training loop:
+
+```python
+def train(ctx):
+    model = ctx.build_model()
+    # build the optimizer/schedule, read the locked train split from ctx.data_dir,
+    # tokenize, run the loop, handle multi-GPU, write only under ctx.artifacts_dir.
+    ...
+```
+
+The default entrypoints are `architecture.py` and `training.py`, and the default symbols are `build_model` and `train`.
+
+_Source: `docs/submissions.md:12-54`; `src/prism_challenge/evaluator/interface.py:11-14`._
+
+## The `prism.yaml` manifest
+
+An optional `prism.yaml` (or `prism.yml`) declares the entrypoints, the tokenizer, and the submit mode. When the manifest is **absent**, PRISM uses the default entrypoints and symbols. When it is **present**, declared entrypoints are honored exactly, with **no silent fallback**.
+
+_Source: `src/prism_challenge/evaluator/components.py:20`, `:54-105`._
+
+### Manifest fields
+
+| Field | Meaning | Source |
+|-------|---------|--------|
+| `kind` | Submit mode: `full`, `architecture_only`, or `training_for_arch` (default `full`) | `src/prism_challenge/evaluator/components.py:21-22`, `:76-78` |
+| `architecture_id` | Optional id linking the submission to an existing architecture | `src/prism_challenge/evaluator/components.py:79-81` |
+| `architecture.entrypoint` | Path to the architecture script (default `architecture.py`) | `src/prism_challenge/evaluator/components.py:85-87` |
+| `training.entrypoint` | Path to the training script (default `training.py`) | `src/prism_challenge/evaluator/components.py:88-90` |
+| `<role>.factory` / `<role>.function` / `<role>.entry` | Override the role's symbol name (the `entrypoint` may also use an `entrypoint.py::symbol` suffix) | `src/prism_challenge/evaluator/components.py:131-141` |
+| `<role>.files` | Extra files (string or list) to include in the role's fingerprint | `src/prism_challenge/evaluator/components.py:242-259` |
+| `tokenizer` | The chosen tokenizer, e.g. `gpt2` | `docs/submissions.md:43-49`; `examples/tiny-1m/prism.yaml:5` |
+
+A minimal manifest:
+
+```yaml
+architecture:
+  entrypoint: architecture.py
+training:
+  entrypoint: training.py
+tokenizer: gpt2
+```
+
+_Source: `examples/tiny-1m/prism.yaml:1-5`._
+
+## Submit modes
+
+The `kind` field selects one of three submit modes. The set of valid kinds is fixed in source, and an unsupported kind is rejected with a contract error.
+
+_Source: `src/prism_challenge/evaluator/components.py:21-22`, `:76-78`._
+
+<Tabs>
+  <Tab title="full">
+    The default mode (`kind: full`, also used when `prism.yaml` is absent). The bundle carries **both** roles - a complete architecture and its training recipe - and both are fingerprinted from the bundle.
+
+    ```yaml
+    kind: full
+    architecture:
+      entrypoint: architecture.py
+    training:
+      entrypoint: training.py
+    tokenizer: gpt2
+    ```
+
+    _Source: `src/prism_challenge/evaluator/components.py:22`, `:67-90`._
+  </Tab>
+  <Tab title="architecture_only">
+    Declares the submission as an architecture-focused entry (`kind: architecture_only`). The `kind` is recorded on the resolved components and carried into the semantic signature as `project_kind`.
+
+    ```yaml
+    kind: architecture_only
+    architecture:
+      entrypoint: architecture.py
+    training:
+      entrypoint: training.py
+    tokenizer: gpt2
+    ```
+
+    The two-script contract still applies: a distinct `architecture.py` (`build_model`) and `training.py` (`train`) are required, because the harness must re-execute a real loop to produce a score.
+
+    _Source: `src/prism_challenge/evaluator/components.py:21`, `:99-105`; `src/prism_challenge/evaluator/component_signatures.py:61`._
+  </Tab>
+  <Tab title="training_for_arch">
+    Declares a training recipe targeting an existing architecture (`kind: training_for_arch`). Pair it with `architecture_id` to attribute the recipe to that architecture.
+
+    ```yaml
+    kind: training_for_arch
+    architecture_id: "<existing-architecture-id>"
+    architecture:
+      entrypoint: architecture.py
+    training:
+      entrypoint: training.py
+    tokenizer: gpt2
+    ```
+
+    The `architecture_id` is read from the manifest and recorded on the resolved components; the bundle must still supply two distinct scripts so the loop can be re-executed.
+
+    _Source: `src/prism_challenge/evaluator/components.py:21`, `:79-81`, `:99-105`._
+  </Tab>
+</Tabs>
+
+## Architecture-vs-training ownership and attribution
+
+The submit mode declares **intent** about which role a submission contributes - an architecture, a training recipe for an existing architecture, or both. PRISM records this as the `kind` plus the optional `architecture_id`, and the SQLite schema keeps `architecture_families` and `training_variants` tables that the family- and variant-listing routes expose.
+
+However, the **live score and weights do not split rewards by role**. `get_weights` keeps, per hotkey, the best `final_score` and normalizes the survivors; the v1-NAS architecture/training ownership reward pools are retired from the score, and the component-attribution holds and ownership-event machinery have been decommissioned.
+
+<Tip>
+The `GET /v1/architectures` and `GET /v1/training-variants` routes are retained as **legacy** endpoints for API compatibility. They do not drive the live weighting.
+</Tip>
+
+_Source: `src/prism_challenge/evaluator/components.py:21-22`, `:79-81`; `src/prism_challenge/db.py:100-131`; `src/prism_challenge/weights.py:21-31`; `docs/scoring.md:89`; `docs/architecture.md:162`._
+
+## The challenge owns the data and the score
+
+PRISM re-executes the miner's `training.py` under a forced random init and a fixed seed, and records the online loss stream itself. Any value the miner reports is ignored, and the challenge authors the run manifest. See [How PRISM works](/challenges/prism/how-it-works) for the forced-init re-execution flow and [Scoring](/challenges/prism/scoring) for the bits-per-byte math.
+
+_Source: `docs/submissions.md:76-81`._
+
+## ZIP safety rules
+
+ZIP submissions are extracted defensively: no path traversal, no symlinks, a limited file count, limited total bytes, and only approved text or code suffixes. Unsupported or unsafe archives are rejected before evaluation.
+
+_Source: `docs/submissions.md:173-183`._

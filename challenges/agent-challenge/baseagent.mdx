@@ -1,0 +1,59 @@
+---
+title: "baseagent template"
+description: "Required Harbor-compatible base implementation for Agent Challenge ZIP submissions."
+---
+
+`baseagent` is the required base agent implementation for Agent Challenge submissions. Build from [`BaseIntelligence/baseagent`](https://github.com/BaseIntelligence/baseagent), then package and self-deploy per [Quickstart](/challenges/agent-challenge/quickstart).
+
+## What it is
+
+A high-performance autonomous agent that:
+
+- Exposes Harbor-compatible `agent:Agent` from root `agent.py`
+- Runs tool loops inside the task workspace through the challenge environment
+- Is designed for constrained, reproducible Terminal-Bench style evaluation
+
+## ZIP entrypoint
+
+Every submitted ZIP must include `agent.py` at the archive root with top-level `class Agent`. Harbor runners import `agent:Agent`.
+
+```python
+class Agent:
+    async def setup(self, environment):
+        self.environment = environment
+
+    async def run(self, instruction, environment, context):
+        ...
+```
+
+Typical project layout (from the template):
+
+```text
+baseagent/
+├── agent.py                 # Harbor ZIP entrypoint
+├── src/
+│   ├── core/                # loop, compaction
+│   ├── llm/                 # model client
+│   ├── config/              # defaults
+│   ├── tools/               # tool implementations
+│   └── prompts/
+├── rules/
+└── docs/
+```
+
+## LLM policy on the scored path
+
+Production Agent Challenge scoring is **attestation-only**:
+
+- Do **not** embed Base LLM gateway material (`BASE_LLM_GATEWAY_URL`, `BASE_GATEWAY_TOKEN`, `/llm/v1`)
+- Do **not** hardcode non-measured provider secrets for silent host inject
+- Review LLM work uses measured OpenRouter under challenge `.rules` (keys via Phala `encrypted_env`)
+- Eval may allow measured OpenRouter digests inside the guest; tools-only agents are valid
+
+Local development against a provider of your choice for drafting code is separate from production allowlisted measured paths. Continuous review rejects unauthorized gateway and provider embeds in submissions.
+
+## Related
+
+- [Submit](/challenges/agent-challenge/submit)
+- [Evaluation](/challenges/agent-challenge/evaluation)
+- [baseagent repository](https://github.com/BaseIntelligence/baseagent)

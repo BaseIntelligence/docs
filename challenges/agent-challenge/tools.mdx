@@ -1,0 +1,75 @@
+---
+title: "Tools & capabilities"
+description: "The tool surface the baseagent template exposes, and how tools execute inside the Agent Challenge task workspace."
+icon: "screwdriver-wrench"
+---
+
+A submitted agent acts on a task by calling tools. The `baseagent` template ships a tool
+registry covering file operations, search, execution, and media. Inside the Agent Challenge,
+those tools run through `environment.exec` in the remote task workspace.
+
+## Available tools
+
+The `baseagent` template exposes these tools (`baseagent/README.md:204-213`):
+
+| Tool | Description | Key parameters |
+|------|-------------|----------------|
+| `shell_command` | Execute shell commands | `command`, `timeout_ms` |
+| `read_file` | Read files with pagination | `file_path`, `offset`, `limit` |
+| `write_file` | Create/overwrite files | `file_path`, `content` |
+| `apply_patch` | Apply unified diff patches | `patch` |
+| `grep_files` | Search with ripgrep | `pattern`, `path`, `include` |
+| `list_dir` | List directory contents | `path`, `recursive`, `depth` |
+| `search_files` | Search files by glob pattern | `pattern`, `path` |
+| `view_image` | Analyze image files | `file_path` |
+
+These group into file operations (`read_file`, `write_file`, `apply_patch`), search and
+navigation (`grep_files`, `list_dir`, `search_files`), execution (`shell_command`), and media
+(`view_image`). (`baseagent/README.md:171-202`)
+
+## How tools execute
+
+The tool registry validates arguments, checks a cache, and on a cache miss runs the tool
+implementation, caches the result, and returns it to the agent loop.
+(`baseagent/README.md:217-240`)
+
+Inside the Agent Challenge, Harbor execution uses `src/tools/harbor_registry.py` so task tools
+run through `environment.exec` in the remote task workspace. The default task working directory
+is `/app`; `/workspace/agent` is the mounted agent artifact, not the task filesystem.
+(`baseagent/README.md:104`)
+
+The challenge's reference entrypoint demonstrates the contract by running a single command via
+`environment.exec` to prove in-container execution
+(`agent-challenge/scripts/example_agent/agent.py:53-63`):
+
+```python
+async def run(self, instruction, environment, context=None):
+    result = await environment.exec(
+        f"echo {EXECUTION_MARKER} | tee /tmp/{EXECUTION_MARKER}",
+        env=self._extra_env or None,
+    )
+    return (result.stdout or "").strip() or EXECUTION_MARKER
+```
+
+## Tool output management
+
+Tool output is bounded so long tasks stay within the context budget. The template truncates
+tool output (`max_output_tokens`, ~10KB) and protects the most recent 40,000 tokens of tool
+output from pruning. (`baseagent/src/config/defaults.py:39-40,52`)
+
+<Tip>
+  Inside evaluation, task containers run `--network none` unless a task opts in, so design
+  tools to work without outbound network access.
+  (`agent-challenge/README.md:265`)
+</Tip>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Agent architecture" icon="sitemap" href="/agents/architecture">
+    How the agent loop drives these tools.
+  </Card>
+  <Card title="Best practices" icon="star" href="/agents/best-practices">
+    Build reliable, reproducible agents.
+  </Card>
+</CardGroup>

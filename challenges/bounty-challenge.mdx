@@ -1,23 +1,56 @@
 ---
 title: "Bounty Challenge"
-description: "Overview of the Bounty Challenge, where owners reward miners for the best finished project work."
+description: "Miner-facing guide for Bounty Challenge: owner-set project briefs, GitHub submissions, human review, emissions."
 ---
 
-Bounty Challenge is a secondary challenge for project bounties that need human judgment. An owner publishes a project brief, miners submit completed work as GitHub links, and the owner reviews submissions and assigns emissions to the hotkeys that produced the best work. It targets open-ended tasks where a strict automatic test suite is not enough, such as building a product flow or improving an application's UI and UX.
+Bounty Challenge is a secondary challenge on BASE for open-ended project work that needs **human judgment**. An owner publishes a brief, miners submit finished work (typically as GitHub links), and the owner reviews and assigns emissions to hotkeys that produced the best results. The subnet then normalizes those challenge outputs into netuid 100 weights.
 
-**Status:** Secondary challenge. This page is an overview only; see the repository for current status and the full guide.
+**Status:** Secondary / experimental relative to Agent Challenge and PRISM. Confirm the live slug and emission share via the registry before registering spend.
 
-<Card title="Repository" icon="github" href="https://github.com/BaseIntelligence/bounty-challenge">
-  BASE/bounty-challenge
-</Card>
+## What it is
+
+| Item | Detail |
+| --- | --- |
+| Slug (typical) | `bounty-challenge` |
+| Artifact | Finished project work, usually linked from a submission record (challenge-defined) |
+| Scoring | Owner review assigns emissions; not a single automatic unit test score |
+| Good for | Product flows, UX work, open-ended builds where auto-graders are insufficient |
+
+## Miner path
+
+<Steps>
+  <Step title="Register on BASE">
+    Hotkey on netuid 100. See [Wallet and registration](/miners/wallet-registration).
+  </Step>
+  <Step title="Discover open bounties">
+    Use the challenge public routes under `/challenges/bounty-challenge/...` (exact paths in the challenge repository). List live challenges:
+
+    ```bash
+    curl -sf "$PROXY_URL/v1/registry"
+    ```
+  </Step>
+  <Step title="Build the deliverable">
+    Implement the owner brief in a repository the challenge accepts (commonly a public GitHub URL plus metadata).
+  </Step>
+  <Step title="Submit and monitor">
+    Follow the challenge signing and submit contract. Identity and subnet proxy signing patterns: [Authentication](/miners/authentication). Track owner review status on challenge endpoints, not only the subnet layer.
+  </Step>
+</Steps>
+
+There is no Base-global "run miner" binary for bounties. Submission format and review UX are **challenge-owned**.
+
+## Costs and expectations
+
+- Chain registration and wallet security are miner-side
+- Compute spends (if any) depend on the bounty, not a subnet TEE mandate
+- Owner discretion means timelines and feedback differ from automatic challenges
+
+## Repository
+
+[`BaseIntelligence/bounty-challenge`](https://github.com/BaseIntelligence/bounty-challenge)
 
 ## Related
 
-<CardGroup cols={2}>
-  <Card title="Data Fabrication" icon="database" href="/challenges/data-fabrication">
-    Another secondary challenge on the subnet.
-  </Card>
-  <Card title="All challenges" icon="trophy" href="/challenges/overview">
-    Every challenge running on BASE.
-  </Card>
-</CardGroup>
+- [All challenges](/challenges/overview)
+- [Data Fabrication](/challenges/data-fabrication)
+- [Miner hub](/miners/overview)

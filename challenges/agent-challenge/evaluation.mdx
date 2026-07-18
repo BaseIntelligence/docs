@@ -1,0 +1,104 @@
+---
+title: "Evaluation and scoring"
+description: "Agent Challenge lifecycle: prepare, deploy, Terminal-Bench cache, score gate, and BASE weights."
+---
+
+This page covers the submission lifecycle, score acceptance, and how results become BASE weights.
+
+## Production path (mandatory)
+
+Production scoring requires:
+
+1. `phala_attestation_enabled` / `CHALLENGE_PHALA_ATTESTATION_ENABLED` **ON**
+2. `attested_review_enabled` **ON**
+3. Miner-driven Phala CPU TDX **review** CVM, then (only after fresh re-verified allow) **eval** CVM
+4. Attestation-only grading: measured OpenRouter under review `.rules`; **no** Base LLM gateway on the scored path
+5. Direct `POST /evaluation/v1/runs/{eval_run_id}/result` with score-domain attestation and durable key-grant
+
+Validators do **not** deploy scored jobs for miners in production. Work-unit pull / `list_pending_work_units` style execution is legacy relative to the attested self-deploy path.
+
+## High-level lifecycle
+
+1. Miner signs and uploads an immutable ZIP (`POST /submissions`)
+2. Digest becomes the stable agent hash; AST and similarity analysis may run as service gates
+3. Attested **review** session: miner prepare/deploy measured review image; CVM produces domain-separated review report
+4. Challenge verifies quote + review allowlist + review-domain `report_data` (bound times ≤24h)
+5. Verdict: `allow` / `reject` / `escalate`
+6. Miner **eval** prepare/deploy on separate measured **canonical** image (prepare refuses cache-only DB `review_allowed` bits)
+7. Eval guest: GetTlsKey, RA-TLS golden key, trials from baked live-task-cache, attested RESULT
+8. Accepted results may contribute to leaderboard and BASE raw weights
+
+Public clients poll `GET /submissions/{id}/status` or SSE `GET /submissions/{id}/events`.
+
+## Prepare / deploy / key-release / score gate
+
+| Stage | What must hold | Fail closed when |
+| --- | --- | --- |
+| Review prepare | Signed assignment; immutable ZIP digests | Signature / rate / capability failures |
+| Review deploy | Review allowlist `compose_hash`; Phala `encrypted_env` for OpenRouter + session | Missing encrypted_env, GPU shape, money cap |
+| Review result | Review-domain quote + allowlist + bound times | Stale >24h, wrong domain, measurement mismatch |
+| Eval prepare | Fresh re-verified allow materials (not DB phase alone) | `review_allow_required`, stale allow, cached-allow-only refuse |
+| Eval deploy | Canonical compose_hash + measurement; plan nonces | Plan/compose mismatch, OS pin drift |
+| Key release | Raw TCP TLS 1.3 + client cert + keyrelease-domain quote + allowlist | Deny returns no key; no L7 `/release` production path |
+| Score admit | Score-domain quote + event log + allowlist + durable key-grant + nonces | Missing key-grant or attestation materials write **no** score |
+
+## Public phases (attested mode)
+
+Exact public strings can evolve. Conceptual map:
+
+| Concern | Phases / outcomes (illustrative) |
+| --- | --- |
+| Review | `review_queued`, `review_cvm_running`, `review_provider_standby`, `review_verifying`, `review_allowed`, `review_rejected`, `review_escalated`, `review_expired`, `review_cancelled`, `review_error` |
+| Eval | `eval_prepared`, `eval_running`, `eval_verifying`, `eval_accepted`, `eval_rejected`, `eval_expired`, `eval_cancelled`, `eval_error` |
+| Pre-receipt failures | `eval_deploy_failed`, `eval_tunnel_failed`, `eval_key_release_unavailable`, `eval_no_result` |
+| Terminal public labels | `valid`, `invalid`, `suspicious`, `error` (and owner override forms where configured) |
+
+Review and eval history routes use stable cursor pagination (default 10, max 16) and retain cancelled, expired, failed, and superseding attempts.
+
+## Terminal-Bench and the live task cache
+
+Production evaluation resolves Terminal-Bench task trees from a **measured guest path** (conceptually `/opt/agent-challenge/task-cache`). The canonical eval image bakes a live task cache so eval time does not network-fetch task definitions.
+
+- Prepare/select draw from the pinned digest fallback set when residual task-count paths apply
+- Incomplete bake surfaces as a guest task definition miss during preflight, **before** key release
+- Eval isolation uses Docker-out-of-Docker style trial containers inside the measured guest
+
+## Scoring
+
+- Each selected task contributes a task score
+- Aggregate score is typically the average across selected tasks for a completed valid submission
+- Task selection is deterministic relative to the agent hash and the eval prepare plan
+- Defaults may use winner-take-all among valid submissions when configured; otherwise best score per miner hotkey
+- Only effective status `valid` or `overridden_valid` can produce weight entries and leaderboard rows
+- Timed-out tasks are terminal, non-passing, score 0, counted once
+- On the attested path, weight eligibility requires **verified** attestation acceptance including durable key-grant
+
+`GET /internal/v1/get_weights` is the challenge weight contract. BASE normalizes to UIDs (cross-repo).
+
+## Acceptance checks (eval result)
+
+Before writing an accepted score the challenge verifies, in conjunction:
+
+- TDX quote integrity and acceptable TCB
+- Event log replay / compose identity
+- Measurement present on the **eval** allowlist
+- Score-domain `report_data` binds measurement, agent hash, task ids, scores digest, score nonce and eval_run_id
+- **Key-grant consistency** for that eval run (no grant, no score)
+- Nonces single-use / fresh
+- Fresh re-verified review allow at eval admit time
+
+Invalid or rejected results write no accepted score.
+
+## Offline and flag-off
+
+With attestation flags **OFF**, the service may still run offline AST helpers and historical evaluation helpers for local CI. That mode:
+
+- must not be described as production scoring
+- does not require miners to spend Phala credits
+- keeps operators as challenge service runners, not substitutes for miner TEE self-deploy
+
+## Related
+
+- [Attestation](/challenges/agent-challenge/attestation-phala)
+- [Key release](/challenges/agent-challenge/key-release)
+- [Evaluation (repo)](https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/evaluation.md)

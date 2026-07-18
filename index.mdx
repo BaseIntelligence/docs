@@ -1,43 +1,64 @@
 ---
 title: "Welcome to BASE"
-description: "BASE is a Bittensor subnet (netuid 100) that runs multiple AI research challenges under one validator network."
+description: "BASE is a Bittensor subnet (netuid 100): validators run infrastructure; miners compete inside pluggable challenges."
 ---
 
-BASE is a multi-challenge Bittensor subnet. Independent challenges run under a single validator network: the subnet routes miner traffic to the right challenge, collects each challenge's raw scores, normalizes them into subnet emissions, maps miner hotkeys to Bittensor UIDs, and publishes the final weight vector for validators to submit on-chain.
+BASE is a multi-challenge Bittensor subnet. Independent **challenges** plug into one validator network. The subnet routes miner traffic to the right challenge, collects raw scores, normalizes emissions, maps miner hotkeys to Bittensor UIDs, and publishes the final weight vector for validators to submit on-chain.
 
-Each challenge lives in its own repository and owns its submissions, scoring logic, and miner experience. BASE provides the orchestration layer that makes those challenges run together as one subnet.
+**Validators run BASE.** **Miners compete inside challenges.** There is no undirected Base mining game UI mixed into validator install docs as the miner path.
+
+```mermaid
+flowchart TB
+  subgraph Validators[BASE operators]
+    M[Master and proxy]
+    W[Weight normalize]
+    S[On-chain submit]
+  end
+  subgraph Challenges
+    AC[Agent Challenge]
+    PR[PRISM]
+    OT[Other challenges]
+  end
+  Miners --> Challenges
+  Challenges -->|raw weights| W
+  M --> Challenges
+  W --> S
+```
 
 <Tip>
-  New here? Read [What is BASE?](/concepts/overview) first to build a mental model, then pick the path below that matches what you want to do.
+  New here? Read [What is BASE?](/concepts/overview), then pick a role below.
 </Tip>
 
 ## Choose your path
 
 <CardGroup cols={2}>
-  <Card title="Mine" icon="pickaxe" href="/miners/overview">
-    Compete in a challenge, submit your work, and earn rewards when your hotkey scores.
+  <Card title="Validators" icon="shield-halved" href="/validators/overview">
+    Install and run BASE: master pieces, weights, join, wallet as validator.
   </Card>
-  <Card title="Validate" icon="scale-balanced" href="/validators/overview">
-    Run the on-chain submitter that publishes the final weight vector to Bittensor.
+  <Card title="Challenges (miners)" icon="trophy" href="/challenges/overview">
+    Miner home: pick a challenge and follow its full submit and eval pack.
   </Card>
-  <Card title="Build agents" icon="robot" href="/agents/overview">
-    Build software-engineering agents for the Agent Challenge.
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge">
+    Phala TDX self-deploy agents (primary miner pack).
   </Card>
-  <Card title="Use PRISM" icon="flask" href="/prism/overview">
-    Submit architectures and training recipes to the PRISM challenge.
+  <Card title="PRISM" icon="flask" href="/challenges/prism/overview">
+    Architecture and training recipes (primary miner pack).
   </Card>
-  <Card title="Learn the concepts" icon="book-open" href="/concepts/overview">
-    Understand the subnet end to end before diving into a role guide.
+  <Card title="Miner hub" icon="pickaxe" href="/miners/overview">
+    Thin hub: wallet registration and choose-a-challenge links only.
+  </Card>
+  <Card title="Concepts" icon="book-open" href="/concepts/overview">
+    Network-level mental model before a role guide.
   </Card>
 </CardGroup>
 
 ## Start fast
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" href="/quickstart">
-    The shortest path to running something against the subnet.
+  <Card title="Validator dry-run" icon="rocket" href="/quickstart">
+    Compute weights locally without submitting on-chain (operator/dev check).
   </Card>
-  <Card title="Installation" icon="download" href="/concepts/installation">
-    The high-level install paths for each role.
+  <Card title="Miner quickstart" icon="rocket" href="/miners/quickstart">
+    Register, choose a challenge, jump to the right pack.
   </Card>
 </CardGroup>

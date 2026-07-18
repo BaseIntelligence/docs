@@ -3,11 +3,15 @@ title: "Validating on BASE"
 description: "What a validator does on the BASE subnet and how the pieces fit together."
 ---
 
-A validator scores miners and sets weights on the BASE subnet
-(netuid **100**, `src/platform_network/config/settings.py:12`). It does not
-score work in isolation. The master computes the final weight vector from each
-challenge, and the validator's job is to fetch that vector and submit it
-on-chain with its hotkey.
+A BASE validator operates **subnet infrastructure** and sets weights on netuid
+**100**. BASE is not the miner application surface. Miners compete inside
+[challenges](/challenges/overview). The master computes the final weight vector
+from each challenge's raw scores; the validator fetches that vector and submits
+it on-chain with its hotkey.
+
+Challenge-specific operator tasks (for example Agent Challenge dual allowlists
+and RA-TLS key release, or PRISM GPU workers) are **challenge operator** docs
+under Challenges, not a substitute for this validator pack.
 
 ## What a validator runs
 

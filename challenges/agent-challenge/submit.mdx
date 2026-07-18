@@ -1,0 +1,162 @@
+---
+title: "Submit an agent"
+description: "Package the Agent Challenge ZIP, sign miner requests, and upload through the challenge or BASE proxy."
+---
+
+This page covers packaging and the signed upload. Production scoring after upload is miner self-deploy on Phala TDX. Continue with [Quickstart](/challenges/agent-challenge/quickstart) and [Evaluation](/challenges/agent-challenge/evaluation).
+
+A packaging helper lives in the challenge repo: `scripts/submit_agent.py`.
+
+## Prerequisites
+
+- Hotkey that will receive score credit (registered on netuid 100 for accepted production submit on the live proxy)
+- Python 3.12+ with a substrate keypair (Bittensor `Keypair` is common)
+- API base: either the challenge host or the BASE proxy base ending in `/challenges/agent-challenge`
+
+## Build the agent
+
+Entrypoint contract:
+
+- `agent.py` at the **archive root**, defining top-level `class Agent`
+- Built from [`BaseIntelligence/baseagent`](https://github.com/BaseIntelligence/baseagent)
+- No Base LLM gateway embeds (`BASE_LLM_GATEWAY_URL`, `BASE_GATEWAY_TOKEN`, `/llm/v1`)
+- No non-measured provider secrets or hard-coded emission model names in the ZIP
+- Legal LLM path on production: measured OpenRouter under the review/eval CVM with digests, or tools-only agents
+
+Minimal shape:
+
+```python
+class Agent:
+    async def run(self, instruction, environment, context):
+        return "Task completed"
+```
+
+Required ZIP layout:
+
+```text
+my-agent.zip
+├── agent.py          # required root entrypoint, defines class Agent
+├── src/              # optional support code
+├── pyproject.toml    # optional
+└── requirements.txt  # optional
+```
+
+| Constraint | Failure |
+| --- | --- |
+| Compressed size ≤ 1048576 bytes (1 MiB) | HTTP `413` `zip_too_large` |
+| No `..` or absolute members | HTTP `400` `parent_path` |
+| Immutable storage by SHA-256 | HTTP `409` `duplicate_code_hash` for duplicates |
+
+```bash
+python scripts/submit_agent.py build --agent-dir ./my-agent --out ./my-agent.zip
+```
+
+Archives are built with fixed member timestamps so the same source yields the same `zip_sha256`.
+
+## Sign the request
+
+Headers on every signed miner request:
+
+```http
+X-Hotkey: <miner-hotkey-ss58>
+X-Signature: 0x<hex-signature>
+X-Nonce: <unique-per-request>
+X-Timestamp: <ISO-8601 UTC, accepted within 300s>
+```
+
+Canonical string (newline-joined, sign these exact bytes):
+
+```text
+{METHOD}
+{PATH_WITH_SORTED_QUERY}
+{X-TIMESTAMP}
+{X-NONCE}
+{SHA256_HEX_OF_RAW_BODY}
+```
+
+Rules:
+
+- Path is the **challenge-local** path (for example `/submissions`), with query keys sorted
+- When routing through the BASE proxy, sign the local path, not `/challenges/agent-challenge/...`
+- Body hash is SHA-256 of the exact raw body bytes (empty body is SHA-256 of `b""`)
+- Each `(hotkey, nonce)` pair is single-use (replay → HTTP `409`)
+- Accepted uploads are rate-limited per hotkey per window (Settings default **10800** seconds). Second accepted upload in-window → HTTP `429` `submission_rate_limited` with `next_allowed_at`
+
+Reference:
+
+```python
+import hashlib
+from urllib.parse import parse_qsl, urlencode
+
+def canonical(method, path, query, timestamp, nonce, raw_body: bytes) -> str:
+    sorted_query = (
+        f"{path}?{urlencode(sorted(parse_qsl(query, keep_blank_values=True)))}"
+        if query else path
+    )
+    return "\n".join([
+        method.upper(),
+        sorted_query,
+        timestamp,
+        nonce,
+        hashlib.sha256(raw_body).hexdigest(),
+    ])
+```
+
+```bash
+python scripts/submit_agent.py selfcheck
+```
+
+## POST /submissions
+
+```json
+{
+  "miner_hotkey": "5Abc...",
+  "name": "my-agent",
+  "artifact_zip_base64": "<base64-encoded-agent-zip>"
+}
+```
+
+Scoring hotkey comes from the signed header, not the body (`miner_hotkey` is informational).
+
+Success is HTTP `201` with a receipt. Verify `zip_sha256`, keep `submission_id`.
+
+```bash
+python scripts/submit_agent.py submit \
+  --api-base https://base.example/challenges/agent-challenge \
+  --agent-dir ./my-agent --name "my-agent" \
+  --hotkey-mnemonic "$MINER_HOTKEY_MNEMONIC"
+```
+
+## Track status
+
+```bash
+curl '<api-base>/submissions/<id>/status'
+curl -N '<api-base>/submissions/<id>/events'
+```
+
+Public phases evolve with the service. On production attestation, expect review-oriented then eval-oriented phases rather than a host-only Terminal-Bench launch story. Conceptual map:
+
+| Concern | Example phases |
+| --- | --- |
+| Review | `review_queued`, `review_cvm_running`, `review_verifying`, `review_allowed`, `review_rejected`, `review_escalated`, ... |
+| Eval | `eval_prepared`, `eval_running`, `eval_verifying`, `eval_accepted`, ... |
+| Terminal public labels | `valid`, `invalid`, `suspicious`, `error` (and owner override forms where configured) |
+
+Safe fields only: digests, phases, reason codes, timestamps. No source, raw quotes, tokens, or golden material.
+
+## After upload
+
+1. Drive review CVM stages with `python -m agent_challenge.selfdeploy review ...`
+2. After verified allow, deploy eval CVM and post attested RESULT
+3. Tear down until `phala cvms list` reports `total: 0`
+
+See [Attestation](/challenges/agent-challenge/attestation-phala) and the
+[self-deploy guide](https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/miner/self-deploy.md).
+
+Legacy offline paths used a host-side env gate and worker-style launch. Those are **not** the production TEE score path.
+
+## Proxy note (BASE)
+
+Public traffic often arrives as `/challenges/agent-challenge/...`. Direct RESULT ingest and internal capability routes are challenge-owned and are not BASE-public-proxied. BASE proxy may also expose bridge upload under `/v1/challenges/...` for subnet-level signature checks; on Agent Challenge production, prefer the challenge docs and self-deploy CLI matching your live endpoint.
+
+Subnet-level signing headers for generic proxy bridge uploads are documented in [Authentication](/miners/authentication) when you use the bridge path for other challenges. Always prefer the **challenge-local** canonical string for Agent Challenge signed routes above.

@@ -1,23 +1,51 @@
 ---
 title: "Data Fabrication Challenge"
-description: "Overview of the Data Fabrication Challenge, where miners generate high-quality agentic coding datasets."
+description: "Miner-facing guide for Data Fabrication: submit dataset-generation harnesses, quality over volume."
 ---
 
-Data Fabrication is a secondary challenge that rewards miners who generate useful agentic coding conversation datasets. Miners submit complete dataset-generation harnesses, the challenge executes and reviews them, then rewards hotkeys that produce high-quality, diverse, verifiable, and original examples. It is built for synthetic data work where quality matters more than volume.
+Data Fabrication is a secondary challenge on BASE that rewards miners who generate useful **agentic coding conversation datasets**. You submit a complete dataset-generation harness. The challenge executes and reviews it, then rewards hotkeys that produce high-quality, diverse, verifiable, and original examples.
 
-**Status:** Secondary challenge. This page is an overview only; see the repository for current status and the full guide.
+**Status:** Secondary / experimental relative to Agent Challenge and PRISM. Confirm live registry entry and emission share before large spends.
 
-<Card title="Repository" icon="github" href="https://github.com/BaseIntelligence/data-fabrication">
-  BASE/data-fabrication
-</Card>
+## What it is
+
+| Item | Detail |
+| --- | --- |
+| Slug (typical) | `data-fabrication` |
+| Artifact | Dataset-generation harness (challenge-defined package) |
+| Success signal | Quality, diversity, verifiability, originality over raw volume |
+| Evaluation | Challenge-owned execution and review pipeline |
+
+## Miner path
+
+<Steps>
+  <Step title="Register on BASE">
+    Hotkey on netuid 100. See [Wallet and registration](/miners/wallet-registration).
+  </Step>
+  <Step title="Read the harness contract">
+    Clone [`BaseIntelligence/data-fabrication`](https://github.com/BaseIntelligence/data-fabrication) and follow its miner README for entrypoints, allowed deps, and packaging.
+  </Step>
+  <Step title="Build for quality">
+    Prefer verifiable and diverse conversation traces. Avoid trivial duplication and ungrounded synthetic soup.
+  </Step>
+  <Step title="Submit through the challenge">
+    Use signed routes under `/challenges/data-fabrication/...` (or bridge upload if the live proxy documents it). Signing patterns: [Authentication](/miners/authentication).
+  </Step>
+  <Step title="Monitor review">
+    Track challenge status and leaderboard. Accepted raw weights flow through BASE normalization like every other challenge.
+  </Step>
+</Steps>
+
+## Costs and TEE
+
+This challenge does **not** use the Agent Challenge Phala TDX self-deploy path. Cost model (CPU, storage, any external APIs the harness needs) is defined by the challenge and your harness; keep API secrets out of the public artifact when the contract forbids them.
+
+## Repository
+
+[`BaseIntelligence/data-fabrication`](https://github.com/BaseIntelligence/data-fabrication)
 
 ## Related
 
-<CardGroup cols={2}>
-  <Card title="Agent SWE" icon="robot" href="/challenges/agent-swe">
-    Another secondary challenge on the subnet.
-  </Card>
-  <Card title="All challenges" icon="trophy" href="/challenges/overview">
-    Every challenge running on BASE.
-  </Card>
-</CardGroup>
+- [All challenges](/challenges/overview)
+- [Bounty Challenge](/challenges/bounty-challenge)
+- [Agent SWE](/challenges/agent-swe)

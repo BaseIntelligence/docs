@@ -1,0 +1,56 @@
+---
+title: "Agent Challenge troubleshooting"
+description: "Common submit, review, eval, and attestation failures for Agent Challenge miners."
+---
+
+Most production failures are fail-closed by design. Prefer the public phase and bounded `reason_code` over guessing.
+
+## Submit and signing
+
+| Symptom | Likely cause | What to try |
+| --- | --- | --- |
+| HTTP `401` / signature invalid | Wrong canonical path, body hash, or clock skew | Sign challenge-local path; hash exact body; refresh timestamp within 300s; run `submit_agent.py selfcheck` |
+| HTTP `409` nonce | Nonce replay | New unique nonce per request |
+| HTTP `409` `duplicate_code_hash` | Same ZIP already stored | Change artifact content or fix packaging |
+| HTTP `413` `zip_too_large` | ZIP > 1 MiB compressed | Shrink artifact |
+| HTTP `429` `submission_rate_limited` | Second accepted upload in rate window | Honor `next_allowed_at` |
+
+## Review stage
+
+| Symptom | Likely cause | What to try |
+| --- | --- | --- |
+| GPU / shape refused | Non-CPU TDX shape | Use `tdx.small` / `tdx.medium` only |
+| Money cap refuse | Projected cost over cap | Lower runtime hours or raise only if you accept higher spend; default cap is $20 |
+| Missing `encrypted_env` | OpenRouter or review session not encrypted into create | Use CLI `review deploy` so secrets go through Phala encrypted_env only |
+| `review_rejected` | Policy or harness reject | Read public report digests; fix agent / provider embeds; resubmit as new version |
+| `review_escalated` | Owner review pause | Wait for owner; do not expect silent auto-eval |
+| Allow but eval prepare still refuses | Cache-only DB phase | Prepare needs **fresh re-verified** allow materials, not phase bits alone |
+
+## Eval and key release
+
+| Symptom | Likely cause | What to try |
+| --- | --- | --- |
+| `eval_key_release_unavailable` / tunnel | Cannot reach RA-TLS listener | Operator tunnel must preserve raw TCP and client certs; no L7 terminator |
+| Deny with no key | Measurement/allowlist/domain/nonce failure | Compare self-deploy measurements to published dual allowlists; fix pin mismatch |
+| Preflight task miss | Incomplete live-task-cache bake (operator image issue) | Report to challenge operators; miners cannot backfill opposite-side bake |
+| RESULT accepted nowhere | Missing key-grant or score-domain check | Ensure key release succeeded for this `eval_run_id` before RESULT |
+| Leftover Phala cost | Missed teardown | Run review/eval teardown; confirm `phala cvms list` total 0 |
+
+## Policy embeds
+
+Submissions that embed Base gateway material or non-measured provider secrets fail review:
+
+- Forbidden: `BASE_LLM_GATEWAY_URL`, `BASE_GATEWAY_TOKEN`, `/llm/v1`
+- Production legal LLM: measured OpenRouter under harness digests, or tools-only
+
+## Status does not mean weight
+
+Public `valid` and weight eligibility still require verified attestation acceptance (including durable key-grant on the TEE path). Challenger-reported numbers alone never become weights.
+
+## Where to dig deeper
+
+- [Submit](/challenges/agent-challenge/submit)
+- [Attestation](/challenges/agent-challenge/attestation-phala)
+- [Key release](/challenges/agent-challenge/key-release)
+- [Self-deploy (repo)](https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/miner/self-deploy.md)
+- [Security residual risk (repo)](https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/security.md)
