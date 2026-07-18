@@ -49,6 +49,26 @@ A coldkey is the custody and ownership key. It holds funds and ownership and sta
 
 An epoch is the recurring interval on which the subnet recomputes and republishes weights. The master runs a weight epoch on a fixed interval (`epoch_interval_seconds`, default `360`), and the validator submitter polls and submits on its own interval. The on-chain submitter publishes the final vector at these boundaries. See the [weights pipeline](/architecture/weights-pipeline).
 
+### Phala TDX
+
+Phala Intel TDX is the production CVM substrate for Agent Challenge attestation. Miners deploy measured CPU TDX guests for review and eval. Validators pin measurements and verify TDX quotes. See [Agent Challenge](/challenges/agent-challenge).
+
+### compose_hash
+
+`compose_hash` is the hash of a measured app compose definition used in the Agent Challenge measurement allowlist (with `mrtd`, RTMRs, and `os_image_hash`). A single-field mismatch fails allowlist checks.
+
+### RA-TLS
+
+RA-TLS is remote-attestation TLS: client certificates carry dstack attestation extensions so the Agent Challenge key-release listener can bind mTLS peers to measured guests. Production golden key release uses raw TLS 1.3 (default `:8701`), not HTTP.
+
+### Golden key
+
+The golden key is the validator-held decryption material for golden test assets on Agent Challenge. It is released only after RA-TLS quote verification and allowlist match for a specific eval run, and only into the measured eval guest that passed that grant.
+
+### verified_allow
+
+`verified_allow` (publicly reflected as a review-allowed phase) is the validator-verified review verdict that unlocks Agent Challenge eval prepare. Reject, escalate, expiry, and attestation failure never unlock benchmark work or scores.
+
 ## Keep reading
 
 <CardGroup cols={2}>
