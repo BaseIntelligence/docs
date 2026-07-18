@@ -1,0 +1,70 @@
+---
+title: "Providing context"
+description: "The PrismContext object your architecture and training scripts receive, including geometry, limits, the locked data path, and distributed launch fields."
+icon: "cube"
+---
+
+Both of your scripts receive a single `PrismContext` (`ctx`). It supplies the metadata and limits your model and loop need, and it controls everything the miner must not: the dataset, the seed, the scoring, and the held-out evaluation.
+
+_Source: `docs/submissions.md:56-74`; `src/prism_challenge/evaluator/interface.py`._
+
+## PrismContext fields and methods
+
+| Field / method | Meaning | Source |
+|----------------|---------|--------|
+| `vocab_size`, `max_seq_len` | Token-id geometry for the model | `src/prism_challenge/evaluator/interface.py:23-24`, `:49-50` |
+| `max_params` | Hard parameter cap (150M) | `src/prism_challenge/evaluator/interface.py:26`, `:53-54` |
+| `seed` | The forced seed (challenge-controlled; you cannot change it) | `docs/submissions.md:64` |
+| `data_dir` | Read-only path to the locked FineWeb-Edu **train** split | `docs/submissions.md:65` |
+| `artifacts_dir` | The only writable path (rank-0 writes) | `docs/submissions.md:66` |
+| `device`, `world_size`, `rank`, `local_rank` | Distributed launch geometry | `docs/submissions.md:67` |
+| `token_budget`, `step_budget` | Compute budget for the run | `docs/submissions.md:68` |
+| `build_model()` | Helper that builds the model from `architecture.py` | `docs/submissions.md:69` |
+| `reference_tokenizer(name)` | Loads a pre-staged offline tokenizer (`"gpt2"` or `"llama"`); never touches the network | `src/prism_challenge/evaluator/interface.py:56-66` |
+
+_Source: `docs/submissions.md:60-71`._
+
+## What you control - and what you do not
+
+You provide model code and a training loop, not your own data. PRISM supplies and controls the dataset.
+
+The miner does **not** control:
+
+- the dataset content or splits;
+- the seed and initialization (forced by the harness);
+- the scoring;
+- the held-out evaluation.
+
+_Source: `docs/submissions.md:72-73`; `docs/miner/README.md:72-74`._
+
+## Reading the locked data
+
+Read raw text from `ctx.data_dir` and tokenize it with your own tokenizer or a pre-staged reference. The `val`/`test` splits are secret and never exposed to your script - only the challenge scorer reads them.
+
+The eval container runs with `network=none`, `HF_HUB_OFFLINE=1`, and `HF_DATASETS_OFFLINE=1`, so there is no network during training. Do not try to download data, tokenizers, or weights at runtime. **Fail closed if the locked data is missing** rather than fabricating data.
+
+_Source: `docs/miner/README.md:76-81`; `docs/submissions.md:91-94`._
+
+## Reference tokenizers
+
+`ctx.reference_tokenizer(name)` loads a pre-staged tokenizer entirely offline. Two references are available: `"gpt2"` (via a tiktoken cache) and `"llama"` (via a sentencepiece `.model`). Using a reference tokenizer never touches the network.
+
+```python
+def train(ctx):
+    tok = ctx.reference_tokenizer("gpt2")
+    ...
+```
+
+_Source: `src/prism_challenge/evaluator/interface.py:56-66`; `docs/miner/README.md:70`._
+
+<Tip>
+Because the score normalizes by raw UTF-8 bytes, the metric is tokenizer-agnostic - you can bring any tokenizer and still be compared like for like. See [Scoring](/challenges/prism/scoring).
+</Tip>
+
+## Distributed geometry
+
+`ctx.world_size`, `ctx.rank`, `ctx.local_rank`, and `ctx.device` describe the launch shape. The harness launches `torchrun --standalone --nnodes=1 --nproc-per-node=<gpu_count>` and exposes `WORLD_SIZE`, `RANK`, and `LOCAL_RANK`. Your loop must also work correctly at `world_size=1`, because the official scored run uses one physical GPU.
+
+_Source: `docs/submissions.md:96-110`; `docs/scaling.md:22-35`._
+
+See [Constraints](/challenges/prism/constraints) for the sandbox, the parameter cap, and the multi-GPU bounds.

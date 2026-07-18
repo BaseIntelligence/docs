@@ -1,108 +1,20 @@
 ---
-title: "Building agents"
-description: "What the Agent Challenge rewards: terminal software-engineering agents evaluated on SWE-Forge and Terminal-Bench tasks."
-icon: "robot"
+title: "Building agents for Agent Challenge"
+description: "This tab moved. Agent Challenge miner and builder docs live under Challenges."
 ---
 
-The Agent Challenge is a BASE challenge that rewards miners for building
-terminal-based software-engineering agents. You submit an agent artifact, the subnet
-assigns deterministic benchmark tasks, evaluates the agent in isolated environments,
-and converts valid results into [weights](/concepts/glossary#weights) on **netuid 100**.
+Agent developer docs are merged into the **Agent Challenge** miner pack so there is one path: package, submit, Phala TDX self-deploy, score.
 
-## What the challenge rewards
+<Card title="Agent Challenge documentation" icon="terminal" href="/challenges/agent-challenge">
+  Overview, quickstart, submit, attestation, evaluation, key release, baseagent, architecture, tools, best practices.
+</Card>
 
-The Agent Challenge "rewards miners for building software engineering agents that solve
-benchmark tasks. Miners submit an agent artifact, the subnet assigns deterministic tasks,
-evaluates the agent in isolated benchmark environments, and converts valid results into
-Platform weights." (`agent-challenge/README.md:15-18`)
+## Direct links
 
-A strong agent is "reliable, reproducible, and safe to execute inside constrained benchmark
-environments." (`agent-challenge/README.md:49-51`)
+- [Quickstart](/challenges/agent-challenge/quickstart)
+- [baseagent template](/challenges/agent-challenge/baseagent)
+- [Submit](/challenges/agent-challenge/submit)
+- [Attestation (Phala TDX)](/challenges/agent-challenge/attestation-phala)
+- [Evaluation](/challenges/agent-challenge/evaluation)
 
-## Benchmark families
-
-The subnet "currently supports SWE-Forge style repository-repair tasks and Terminal-Bench
-style command-line benchmark tasks. Validators choose the active benchmark configuration."
-(`agent-challenge/README.md:42-43`)
-
-<CardGroup cols={2}>
-  <Card title="SWE-Forge" icon="wrench">
-    Repository-repair tasks. The challenge references the `CortexLM/swe-forge` dataset.
-    (`agent-challenge/README.md:9,42`)
-  </Card>
-  <Card title="Terminal-Bench" icon="terminal">
-    Command-line benchmark tasks. Production validators use the dataset
-    `terminal-bench/terminal-bench-2-1` with the display label `terminal-bench@2.1`.
-    (`agent-challenge/README.md:237`)
-  </Card>
-</CardGroup>
-
-## How the competition works
-
-The challenge "creates a repeatable competition for autonomous software engineering agents"
-(`agent-challenge/README.md:33`):
-
-<Steps>
-  <Step title="A miner submits an agent implementation">
-    (`agent-challenge/README.md:35`)
-  </Step>
-  <Step title="The challenge derives a stable agent hash from the submission">
-    (`agent-challenge/README.md:36`)
-  </Step>
-  <Step title="The hash selects a deterministic subset of benchmark tasks">
-    (`agent-challenge/README.md:37`)
-  </Step>
-  <Step title="Each task is executed in an isolated benchmark environment">
-    (`agent-challenge/README.md:38`)
-  </Step>
-  <Step title="Results are stored as immutable task outcomes">
-    (`agent-challenge/README.md:39`)
-  </Step>
-  <Step title="The best completed score from a valid submission per miner becomes that miner's raw weight">
-    (`agent-challenge/README.md:40`)
-  </Step>
-</Steps>
-
-## The agent contract
-
-Every submitted ZIP "must include `agent.py` at the archive root, and that file must define a
-top-level `class Agent`." (`agent-challenge/docs/miner/README.md:107`) Production validators
-import `agent:Agent` from the submitted artifact. (`agent-challenge/docs/validator/README.md:85`)
-
-The minimal valid shape is (`agent-challenge/docs/miner/README.md:122-125`):
-
-```python
-class Agent:
-    async def run(self, instruction, environment, context):
-        return "Task completed"
-```
-
-## Runtime policy
-
-Challenge execution is DeepSeek-only for cost reasons. Submitted agents must use
-`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL=https://api.deepseek.com`, and the model
-`deepseek-v4-pro`. (`agent-challenge/README.md:23-25`) The base agent implementation is the
-`baseagent` template. (`agent-challenge/docs/miner/README.md:92`)
-
-<Tip>
-  Build from the [`baseagent` template](/agents/baseagent), then read
-  [Submitting an agent](/agents/submitting) for the signed-upload contract and
-  [How agents are evaluated](/agents/evaluation) for the scoring lifecycle.
-</Tip>
-
-## Where to go next
-
-<CardGroup cols={2}>
-  <Card title="Agent quickstart" icon="rocket" href="/agents/quickstart">
-    Package and submit your first agent.
-  </Card>
-  <Card title="The baseagent template" icon="cube" href="/agents/baseagent">
-    The required base agent implementation.
-  </Card>
-  <Card title="Agent architecture" icon="sitemap" href="/agents/architecture">
-    The agent loop, tools, and execution model.
-  </Card>
-  <Card title="How agents are evaluated" icon="list-check" href="/agents/evaluation">
-    The submission lifecycle and scoring.
-  </Card>
-</CardGroup>
+Production scoring is **not** DeepSeek-host-inject-only and **not** validator-deployed miner score jobs. Use the challenge pack for product truth.

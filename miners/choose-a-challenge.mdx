@@ -1,101 +1,59 @@
 ---
 title: "Choosing a challenge"
-description: "Compare the primary challenges, agent-challenge and PRISM, and the secondary challenge slugs."
+description: "Compare Agent Challenge, PRISM, and secondary challenges. Each owns its full miner path."
 icon: "list-check"
 ---
 
-BASE runs multiple challenges under one subnet. You compete in one challenge
-at a time by building its artifact and submitting through the proxy under that challenge's
-slug (`docs/miner/README.md:20-34`). The two primary challenges are **agent-challenge** and
-**PRISM**; secondary slugs also route through the proxy.
+You compete in **one challenge at a time** by following that challenge's docs. BASE only routes traffic, discovers challenges, and normalizes weights. Artifact formats and scoring never share a single Base-global path.
 
 ## Primary challenges
 
 <CardGroup cols={2}>
-  <Card title="Agent Challenge" icon="terminal">
-    Build a software-engineering agent that solves benchmark tasks. Slug `agent-challenge`,
-    emission `15` percent (`src/platform_network/cli_app/main.py:268,293`).
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge">
+    Build a software-engineering agent. Production: miner-funded Phala CPU TDX review then eval, RA-TLS golden key, Terminal-Bench from a baked guest cache. Slug `agent-challenge`.
   </Card>
-  <Card title="PRISM" icon="microscope">
-    Submit a model architecture and a training loop that learns fast from scratch. Slug
-    `prism`, emission `30` percent (`src/platform_network/cli_app/main.py:267,292`).
+  <Card title="PRISM" icon="microscope" href="/challenges/prism/overview">
+    Submit `architecture.py` + `training.py`. Challenge re-executes train under forced init and scores prequential bits-per-byte. Slug `prism`.
   </Card>
 </CardGroup>
 
-### Agent Challenge
+### Agent Challenge (summary)
 
-Agent Challenge rewards miners for building agents that inspect a task, modify a workspace,
-run checks, and produce a correct solution (`agent-challenge README.md:45-48`). The flow is
-deterministic: you submit an agent implementation, the challenge derives a stable agent
-hash, the hash selects a task subset, each task runs in an isolated environment, and your
-best valid score becomes your raw weight (`agent-challenge README.md:33-41`).
+- **Artifact:** agent ZIP, root `agent.py` with `class Agent` (build from `baseagent`)
+- **After upload:** self-deploy measured review CVM, then after verified allow, eval CVM
+- **Costs:** Phala CVM spend capped on the self-deploy path (default hard joint cap $20); OpenRouter for review under measured `.rules`
+- **Not:** Base LLM gateway on the scored path; validator-deployed score jobs for miners
 
-- **Artifact:** an agent ZIP whose root `agent.py` exposes `agent:Agent`
-  (`baseagent README.md:104` in the baseagent repository).
-- **Upload path:** raw ZIP bridge upload at
-  `POST /v1/challenges/agent-challenge/submissions`, or the JSON base64 generic proxy path
-  at `POST /challenges/agent-challenge/submissions` (`docs/miner/README.md:53-60`).
-- **Env step:** after analysis allows the artifact, a master validator pauses it at
-  `Waiting for miner action`; you save env vars or confirm none are needed before launch
-  (`docs/miner/README.md:66-97`).
+Full pack: [Agent Challenge](/challenges/agent-challenge).
 
-<Tip>
-Agent Challenge requires the baseagent implementation as the base agent, and challenge
-execution is DeepSeek-only: submitted agents must use `DEEPSEEK_API_KEY`,
-`DEEPSEEK_BASE_URL=https://api.deepseek.com`, and model `deepseek-v4-pro`
-(`agent-challenge README.md:23-30`). See
-[Migrating from baseagent](/miners/migration-baseagent).
-</Tip>
+### PRISM (summary)
 
-### PRISM
+- **Artifact:** two distinct scripts in a zip (or directory snapshot)
+- **Flow:** AST sandbox → LLM hard gate → GPU re-execution → challenge-authored score
+- **Anti-cheat:** forced random init, no network in container, secret held-out splits, miner-reported metrics ignored
 
-PRISM measures a model's ability to learn from scratch. You submit two scripts, the
-challenge owns the locked data and the scoring, and the validator re-executes your training
-loop under a forced random initialization and computes the score itself
-(`prism README.md:19-30`).
+Full pack: [PRISM](/challenges/prism/overview).
 
-- **Artifact:** a two-script `.zip` bundle, `architecture.py` exposing `build_model(ctx)`
-  and `training.py` exposing `train(ctx)` (`prism docs/miner/README.md:23-60`). The
-  registered submission format is `zip` (`src/platform_network/cli_app/main.py:458`).
-- **Contract:** a single combined module no longer satisfies the contract; architecture
-  and training must be two distinct files (`prism docs/miner/README.md:56-60`).
-- **Flow:** static AST sandbox, then an LLM hard gate, then GPU re-execution on the locked
-  train split, then a prequential bits-per-byte score (`prism README.md:37-43`).
+## Secondary challenges
 
-## Secondary challenge slugs
+| Challenge | Slug (typical) | Miner angle | Guide |
+| --- | --- | --- | --- |
+| Bounty | `bounty-challenge` | Owner-reviewed finished work | [Guide](/challenges/bounty-challenge) |
+| Data Fabrication | `data-fabrication` | Dataset harness quality | [Guide](/challenges/data-fabrication) |
+| Agent SWE | `agent-swe` | Real-repo fail-to-pass agents | [Guide](/challenges/agent-swe) |
 
-Other challenge slugs route through the same proxy (`docs/miner/README.md:22`):
-
-- `data-fabrication`: agentic coding conversation dataset generation
-  (`docs/miner/README.md:168`).
-- `bounty-challenge`: owner-created project bounties (`docs/miner/README.md:169`).
-
-The artifact format, task rules, and scoring for each of these are defined by the
-respective challenge repository, not by the subnet (`docs/miner/README.md:33-34,125-135`).
-
-## How emissions affect your choice
-
-A strong score in one challenge contributes according to that challenge's configured
-emission share (`docs/miner/README.md:148-149`). The subnet applies the per-challenge
-emission and normalizes across active outputs before mapping hotkeys to UIDs
-(`docs/miner/README.md:141-146`). PRISM weights at `30` percent and agent-challenge at `15`
-percent (`src/platform_network/cli_app/main.py:292-293`).
-
-## Find what is live
-
-List the active challenges from the registry read on the proxy (`README.md:425`):
+Confirm emission shares and active status from:
 
 ```bash
 curl -sf "$PROXY_URL/v1/registry"
 ```
 
-## Next steps
+## Emissions
 
-<CardGroup cols={2}>
-  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
-    Upload your artifact through the proxy.
-  </Card>
-  <Card title="Authentication & signing" icon="signature" href="/miners/authentication">
-    Sign the upload with your hotkey.
-  </Card>
-</CardGroup>
+A strong score in one challenge contributes only through that challenge's configured emission share after BASE normalization. Shares are configuration on the live network, not a fixed promise in these docs. Prefer the registry and operator announcements over stale hard-coded percents.
+
+## Next
+
+- [Agent Challenge quickstart](/challenges/agent-challenge/quickstart)
+- [PRISM quickstart](/challenges/prism/quickstart)
+- [Authentication](/miners/authentication)

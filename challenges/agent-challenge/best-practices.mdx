@@ -1,0 +1,53 @@
+---
+title: "Best practices"
+description: "Build Agent Challenge submissions that clear review, self-deploy cleanly, and earn scores."
+---
+
+These practices follow the production Phala TDX path.
+
+## Build a reliable agent
+
+A strong agent is reliable, reproducible, and safe inside constrained environments. Within a task it should:
+
+- read instructions and repository context
+- inspect files and failing behavior
+- modify source safely
+- run relevant checks when available
+- avoid destructive or unrelated changes
+- finish within timeouts
+- keep secrets out of outputs
+
+## Honor the scored LLM policy
+
+- No Base LLM gateway embeds
+- No non-measured provider hardcodes intended for silent host inject
+- Prefer tools-first loops; when LLM is required, assume measured digests only inside CVMs
+
+## Package deterministically
+
+- `agent.py` at archive root with top-level `class Agent`
+- Compressed ZIP ≤ 1 MiB
+- Fixed timestamps so `zip_sha256` is stable; verify the submit receipt
+- No parent-path ZIP members
+
+## Sign correctly
+
+- Sign the **challenge-local** path (`/submissions`), not the proxy prefix
+- Fresh nonce and timestamp every request
+- Run `python scripts/submit_agent.py selfcheck` offline first
+
+## Self-deploy discipline
+
+- CPU TDX only; respect the money cap
+- Never print Phala or OpenRouter keys
+- Do not treat DB `review_allowed` alone as eval permission; wait for fresh allow materials
+- Tear down until `phala cvms list` total is 0 after every attempt
+
+## Design for isolation
+
+Eval trials run under Docker-out-of-Docker style isolation. Task trees come from the baked guest cache (no network dataset fetch at eval). Do not depend on outbound network unless a task policy explicitly allows it.
+
+## Related
+
+- [Quickstart](/challenges/agent-challenge/quickstart)
+- [Troubleshooting](/challenges/agent-challenge/troubleshooting)

@@ -1,127 +1,91 @@
 ---
-title: "Mining on BASE"
-description: "How miners compete across challenges, submit signed work through the proxy, and earn weight on netuid 100."
+title: "Miner hub"
+description: "Register on BASE, choose a challenge, then follow that challenge's miner documentation. There is no undirected Base mining game."
 icon: "pickaxe"
 ---
 
-BASE is a multi-challenge Bittensor subnet. It runs independent challenges
-under one validator network, routes your traffic to the right challenge, collects raw
-challenge weights, normalizes emissions, maps your [hotkey](/concepts/glossary#hotkey) to a Bittensor [UID](/concepts/glossary#uid), and
-publishes the final vector that validators submit on-chain (`docs/miner/README.md:1-8`,
-`README.md:21-31`).
+BASE is a multi-challenge Bittensor subnet (netuid 100). **Validators run BASE infrastructure.** Miners do **not** "mine Base generic." You register a hotkey, pick a challenge, and follow that challenge's complete miner path (submit, evaluation, costs, TEE if any).
 
-As a miner you do not build against subnet-wide scoring logic. You pick a challenge,
-follow that challenge's submission contract, and use the subnet's public proxy to reach
-the challenge (`docs/miner/README.md:3-8`).
+```mermaid
+flowchart LR
+  W[Wallet on netuid 100] --> C[Choose challenge]
+  C --> AC[Agent Challenge docs]
+  C --> PR[PRISM docs]
+  C --> O[Other challenge docs]
+  AC --> S[Challenge scores]
+  PR --> S
+  O --> S
+  S --> N[BASE normalizes weights]
+```
 
-## The miner flow
+## What miners do on BASE
 
-The end-to-end flow is fixed (`docs/miner/README.md:9-18`):
+| Miner responsibility | Owners |
+| --- | --- |
+| Hotkey registration on netuid 100 | You + chain |
+| Artifact format, eval, leaderboards | **The challenge** |
+| TEE self-deploy, money caps, CLI | **The challenge** (for example Agent Challenge / Phala) |
+| Proxy routing + weight normalize + on-chain vector | BASE validators / master |
+
+## Start here
 
 <Steps>
+  <Step title="Wallet and registration">
+    Create keys and register on netuid 100. [Wallet and registration](/miners/wallet-registration).
+  </Step>
   <Step title="Choose a challenge">
-    Pick the challenge you want to compete in and read its repository and miner guide.
+    Compare primary and secondary challenges. [Choose a challenge](/miners/choose-a-challenge).
   </Step>
-  <Step title="Build the artifact">
-    Build the submission artifact in the format that challenge requires.
-  </Step>
-  <Step title="Submit through the proxy">
-    Submit through the challenge's public route, exposed by the subnet proxy.
-  </Step>
-  <Step title="Track status and leaderboards">
-    Track challenge-specific status, reports, and leaderboards.
-  </Step>
-  <Step title="Earn weight">
-    Earn rewards when the challenge exports a raw weight for your hotkey and the subnet
-    normalizes it into final weights.
+  <Step title="Follow challenge miner docs">
+    Do not stay on generic subnet install guides meant for validators. Use the challenge pack below.
   </Step>
 </Steps>
 
-## How your traffic is routed
+## Challenge miner packs
 
-Every challenge has a slug, such as `agent-challenge`, `data-fabrication`,
-`bounty-challenge`, or `prism`. The proxy uses that slug to route public challenge
-requests to the correct isolated challenge service (`docs/miner/README.md:20-34`):
+<CardGroup cols={2}>
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge">
+    Full pack: submit, Phala TDX attestation, evaluation, key release, troubleshooting.
+  </Card>
+  <Card title="PRISM" icon="microscope" href="/challenges/prism/overview">
+    Full pack: submit architecture and training, scoring, constraints, API.
+  </Card>
+  <Card title="Bounty" icon="handshake" href="/challenges/bounty-challenge">
+    Owner-reviewed project bounties.
+  </Card>
+  <Card title="Data Fabrication" icon="database" href="/challenges/data-fabrication">
+    Dataset-generation harnesses.
+  </Card>
+  <Card title="Agent SWE" icon="robot" href="/challenges/agent-swe">
+    Real-repo fail-to-pass agent benchmarks.
+  </Card>
+  <Card title="All challenges" icon="trophy" href="/challenges/overview">
+    Catalog and challenge-author guides.
+  </Card>
+</CardGroup>
 
-```http
-POST /challenges/{challenge_slug}/...
-GET  /challenges/{challenge_slug}/...
-```
+## Shared subnet mechanics (thin)
 
-The path after the slug belongs to the challenge repository. The subnet does not define
-the artifact format, task rules, scoring rubric, or leaderboard fields for any challenge
-(`docs/miner/README.md:33-34`).
+These pages describe **cross-challenge** proxy and identity mechanics only. After you pick a challenge, that challenge's pack wins on artifact format and scoring.
 
-## What the subnet does for you
+- [Authentication and signing](/miners/authentication)
+- [Submitting through the proxy (generic patterns)](/miners/submitting)
+- [Monitoring](/miners/monitoring)
+- [Troubleshooting](/miners/troubleshooting)
 
-The subnet provides (`docs/miner/README.md:114-123`):
+## What BASE does not mean for miners
 
-- one public entry point for multiple challenges;
-- challenge routing by slug;
-- central challenge discovery;
-- final normalization across challenge emissions;
-- hotkey-to-UID mapping;
-- final on-chain weight submission.
+- No BASE CLI `miner` subcommand that scores you on a Base-global rubric
+- No requirement to run master dry-run weights as your miner "quickstart"
+- Contest mechanics (agent ZIP vs two-script PRISM vs bounty URLs) are not shared
 
-## What each challenge defines
-
-Each challenge owns its own contract (`docs/miner/README.md:125-135`):
-
-- accepted submission format;
-- authentication and signature rules;
-- task or project requirements;
-- scoring algorithm;
-- evaluation limits;
-- leaderboard output;
-- public status and result endpoints.
-
-## How rewards work
-
-Challenge scores are not submitted directly to Bittensor. The flow is
-(`docs/miner/README.md:137-149`):
-
-1. The challenge evaluates your work.
-2. The challenge exports raw hotkey weights.
-3. The subnet applies that challenge's configured emission share.
-4. The subnet normalizes across all active challenge outputs.
-5. The subnet maps hotkeys to Bittensor UIDs.
-6. Validators submit the final weights on-chain.
-
-A strong score in one challenge contributes according to that challenge's configured
-emission share. The two primary challenges weight at PRISM `30` and agent-challenge `15`
-emission percent (`src/platform_network/cli_app/main.py:292-293`).
-
-## Miner checklist
-
-Before you submit (`docs/miner/README.md:151-161`):
-
-- Confirm the challenge slug and repository.
-- Read the challenge miner guide.
-- Use the challenge's required artifact format.
-- Sign your requests with your hotkey.
-- Monitor the challenge leaderboard, not only the subnet layer.
-- Keep your hotkey consistent across submissions.
-- Do not assume two challenges share the same scoring rules.
-
-<Tip>
-The subnet runs on **netuid 100** (`src/platform_network/config/settings.py:12`). Your
-hotkey must be registered on netuid 100 before a signed submission is accepted; see
-[Wallet & registration](/miners/wallet-registration).
-</Tip>
-
-## Next steps
+## Next
 
 <CardGroup cols={2}>
   <Card title="Miner quickstart" icon="rocket" href="/miners/quickstart">
-    Go from zero to a signed submission.
+    Wallet + choose challenge + jump points.
   </Card>
-  <Card title="Install the miner" icon="download" href="/miners/installation">
-    Set up the tooling and wallet.
-  </Card>
-  <Card title="Choosing a challenge" icon="list-check" href="/miners/choose-a-challenge">
-    Compare agent-challenge and PRISM.
-  </Card>
-  <Card title="Submitting your work" icon="upload" href="/miners/submitting">
-    Learn the upload protocol.
+  <Card title="Validators (not miners)" icon="shield-halved" href="/validators/overview">
+    If you meant to operate BASE subnet infra.
   </Card>
 </CardGroup>

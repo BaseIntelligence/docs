@@ -1,62 +1,56 @@
 ---
-title: "Quickstart"
-description: "The shortest path to running the BASE CLI and computing a weight vector without touching the chain."
+title: "Quickstart (operators and developers)"
+description: "Dry-run BASE master weights with the subnet CLI. Not a miner score path."
 ---
 
-This quickstart gets the canonical `base` repository running locally and computes a weight vector with the CLI, all in dry-run so nothing is submitted on-chain. It is the fastest way to confirm your environment works before you follow a full [role guide](/concepts/overview).
+This quickstart runs the canonical `base` repository locally and computes a weight vector with the CLI in dry-run mode so nothing is submitted on-chain. It validates **operator and developer** tooling.
 
-<Tip>
-  Want to mine, validate, or build an agent instead? Jump straight to the [miner](/miners/overview), [validator](/validators/overview), or [agent developer](/agents/overview) path. This page is the generic "run something" starting point.
-</Tip>
+**Miners:** do not treat this as your contest path. Choose a challenge and open its miner pack under [Challenges](/challenges/overview).
 
 ## Prerequisites
 
-- A Python runtime and the [`uv`](https://docs.astral.sh/uv/) package manager.
-- A clone of the canonical `base` repository.
+- A Python runtime and the [`uv`](https://docs.astral.sh/uv/) package manager
+- A clone of the canonical [`base`](https://github.com/BaseIntelligence/base) repository
 
 ## Get started
 
 <Steps>
   <Step title="Install dependencies">
-    From the repository root, sync the runtime and dev dependencies with `uv`.
+    From the repository root:
 
     ```bash
     uv sync --extra dev --extra master
     ```
-
-    The full local check (lint, types, tests) is documented alongside this command in the repository README.
   </Step>
   <Step title="Explore the CLI">
-    The subnet ships a single CLI. Its command groups are `master`, `validator`, `challenge`, `db`, and `registry`.
+    Command groups include `master`, `validator`, `challenge`, `db`, and `registry`. There is no miner score subcommand for undirected Base mining.
 
     ```bash
     uv run platform --help
     ```
   </Step>
   <Step title="Compute weights in dry-run">
-    Run one master epoch that computes a weight vector and prints how many UID weights it produced. With `--dry-run` (and without `--submit-on-chain`) nothing is written to Bittensor.
-
     ```bash
     uv run platform master weights --once --dry-run
     ```
 
-    The command echoes `compute-only: computed <N> weights`. See [how it works](/concepts/how-it-works) for what that vector represents.
+    Expect `compute-only: computed <N> weights`. See [how it works](/concepts/how-it-works).
   </Step>
 </Steps>
 
 ## What to do next
 
 <CardGroup cols={2}>
-  <Card title="How the subnet works" icon="diagram-project" href="/concepts/how-it-works">
-    Follow a submission from a miner all the way to on-chain weights.
+  <Card title="Validators" icon="shield-halved" href="/validators/overview">
+    Full BASE operator guide.
   </Card>
-  <Card title="Wallets & registration" icon="wallet" href="/concepts/wallets-and-registration">
-    Set up the keys you need before you participate for real.
+  <Card title="Miners" icon="pickaxe" href="/miners/overview">
+    Wallet + choose challenge hub.
   </Card>
-  <Card title="Choose a role" icon="signs-post" href="/concepts/overview">
-    Pick the miner, validator, or agent path that fits you.
+  <Card title="Agent Challenge" icon="terminal" href="/challenges/agent-challenge/quickstart">
+    Primary miner pack (TEE).
   </Card>
-  <Card title="Glossary" icon="list" href="/concepts/glossary">
-    Look up any term used across these docs.
+  <Card title="PRISM" icon="microscope" href="/challenges/prism/quickstart">
+    Primary miner pack (NAS).
   </Card>
 </CardGroup>

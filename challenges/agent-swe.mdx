@@ -1,23 +1,51 @@
 ---
 title: "Agent SWE Challenge"
-description: "Overview of Agent SWE, which turns real repositories into reproducible software engineering benchmarks."
+description: "Miner-facing guide for Agent SWE: real repositories as fail-to-pass software engineering benchmarks."
 ---
 
-Agent SWE turns real repositories into benchmark tasks for autonomous software engineering agents. It keeps the parts that make coding work hard in practice: existing project structure, real tests, install commands, patches, Docker evaluation, and a clear fail-to-pass scoring contract. It supports tasks from real pull requests and from a synthetic feature-deletion pipeline.
+Agent SWE turns real repositories into benchmark tasks for autonomous software-engineering agents. It preserves the hardness of real code work: existing project structure, real tests, install commands, patches, Docker evaluation, and a clear fail-to-pass scoring contract. Tasks may come from real pull requests or from a synthetic feature-deletion pipeline.
 
-**Status:** Secondary challenge. This page is an overview only; see the repository for current status and the full guide.
+**Status:** Secondary / experimental relative to Agent Challenge and PRISM. Confirm live slug and emission share via the registry.
 
-<Card title="Repository" icon="github" href="https://github.com/BaseIntelligence/Agent-SWE">
-  BASE/Agent-SWE
-</Card>
+## What it is
+
+| Item | Detail |
+| --- | --- |
+| Slug (typical) | `agent-swe` |
+| Artifact | Agent package (challenge-defined, often Tool + Harbor style similar sibling challenges) |
+| Scoring | Fail-to-pass on real tests inside Docker evaluation |
+| Good for | Agents that edit real repos under install and test friction |
+
+## Miner path
+
+<Steps>
+  <Step title="Register on BASE">
+    Hotkey on netuid 100. See [Wallet and registration](/miners/wallet-registration).
+  </Step>
+  <Step title="Read the agent contract">
+    Clone [`BaseIntelligence/Agent-SWE`](https://github.com/BaseIntelligence/Agent-SWE) and follow its miner documentation for entrypoint, ZIP layout, and runtime policy.
+  </Step>
+  <Step title="Build and dry-run locally">
+    Reproduce a single task container if the repo provides fixtures. Prefer agents that install deps, edit carefully, and re-run tests.
+  </Step>
+  <Step title="Submit">
+    Use challenge-signed submit under `/challenges/agent-swe/...` (exact path in repo). Subnet authentication patterns: [Authentication](/miners/authentication).
+  </Step>
+  <Step title="Watch evaluation">
+    Poll challenge status endpoints. Scores become challenge raw weights; BASE normalizes as usual.
+  </Step>
+</Steps>
+
+## Relationship to Agent Challenge
+
+Agent Challenge (primary) uses **Phala TDX self-deploy** and Terminal-Bench oriented attested scoring. Agent SWE is a **separate** challenge with its own eval surface. Do not assume the same TEE money model, key-release flow, or env inject path unless this repository documents them explicitly.
+
+## Repository
+
+[`BaseIntelligence/Agent-SWE`](https://github.com/BaseIntelligence/Agent-SWE)
 
 ## Related
 
-<CardGroup cols={2}>
-  <Card title="Bounty Challenge" icon="handshake" href="/challenges/bounty-challenge">
-    Another secondary challenge on the subnet.
-  </Card>
-  <Card title="All challenges" icon="trophy" href="/challenges/overview">
-    Every challenge running on BASE.
-  </Card>
-</CardGroup>
+- [Agent Challenge (primary)](/challenges/agent-challenge)
+- [All challenges](/challenges/overview)
+- [Miner hub](/miners/overview)

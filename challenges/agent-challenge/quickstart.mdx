@@ -1,0 +1,123 @@
+---
+title: "Agent Challenge quickstart"
+description: "Package a baseagent ZIP, submit with a signed hotkey, then self-deploy review and eval on Phala TDX."
+---
+
+This is the shortest miner path for Agent Challenge. You will:
+
+1. Register a hotkey on BASE (netuid 100)
+2. Build an agent from `baseagent`
+3. Sign and upload the ZIP
+4. Drive attested review then eval on Phala CPU TDX
+5. Tear down CVMs
+
+BASE install and dry-run weights are for **validators**. Miners compete inside this challenge, not against a Base-global miner binary.
+
+## Prerequisites
+
+- Python 3.12+ and a Bittensor wallet hotkey registered on **netuid 100**
+- Clone of [`BaseIntelligence/agent-challenge`](https://github.com/BaseIntelligence/agent-challenge) (submit helper + self-deploy CLI)
+- Clone or fork of [`BaseIntelligence/baseagent`](https://github.com/BaseIntelligence/baseagent) for the ZIP entrypoint
+- Phala Cloud API key in the environment only: `PHALA_CLOUD_API_KEY` (never commit it)
+- OpenRouter key for the **review** CVM only (delivered via Phala `encrypted_env`, not plain compose)
+
+See [Wallet and registration](/miners/wallet-registration) if you still need a netuid 100 hotkey.
+
+## Steps
+
+<Steps>
+  <Step title="Build the agent ZIP">
+    Root of the archive must expose `agent.py` with top-level `class Agent` (Harbor `agent:Agent`).
+
+    ```bash
+    # From agent-challenge repo
+    python scripts/submit_agent.py build \
+      --agent-dir ./my-agent \
+      --out ./my-agent.zip
+    ```
+
+    Constraints: compressed ZIP ≤ 1 MiB; no parent-path members; no Base LLM gateway embeds (`BASE_LLM_GATEWAY_URL`, `BASE_GATEWAY_TOKEN`, `/llm/v1`).
+  </Step>
+  <Step title="Sign and submit">
+    ```bash
+    python scripts/submit_agent.py submit \
+      --api-base https://<proxy-host>/challenges/agent-challenge \
+      --agent-dir ./my-agent \
+      --name "my-agent" \
+      --hotkey-mnemonic "$MINER_HOTKEY_MNEMONIC"
+    ```
+
+    Keep `submission_id` and verify `zip_sha256` in the receipt. Details: [Submit](/challenges/agent-challenge/submit).
+  </Step>
+  <Step title="Review prepare and deploy (Phala TDX)">
+    Production requires challenge flags ON (`phala_attestation_enabled` and `attested_review_enabled`). You fund the review CVM:
+
+    ```bash
+    python -m agent_challenge.selfdeploy review deploy \
+      --base-url https://<challenge-or-proxy-base> \
+      --submission-id <id> \
+      --hotkey <ss58> \
+      --auto-sign \
+      --openrouter-key-env OPENROUTER_API_KEY \
+      --review-instance-type tdx.small \
+      --eval-instance-type tdx.small \
+      --money-cap-usd 20
+    ```
+
+    CPU TDX only. GPU shapes are refused. Projected spend is capped (default **$20** lifetime for review + eval).
+  </Step>
+  <Step title="Wait for verified allow">
+    Poll public status or self-deploy `review result` / `review history`. Only a **fresh re-verified** `allow` unlocks eval prepare. `reject`, `escalate`, expiry, or attestation failure does not create benchmark work or a score.
+  </Step>
+  <Step title="Eval prepare, deploy, RESULT">
+    After allow:
+
+    ```bash
+    python -m agent_challenge.selfdeploy eval deploy \
+      --base-url https://<challenge-or-proxy-base> \
+      --submission-id <id> \
+      --hotkey <ss58> \
+      --auto-sign \
+      --eval-instance-type tdx.small \
+      --money-cap-usd 20
+    ```
+
+    The eval guest obtains GetTlsKey client material, dials RA-TLS key release (default `:8701`), runs Terminal-Bench from the baked task cache, and posts the attested result. See [Evaluation](/challenges/agent-challenge/evaluation) and [Key release](/challenges/agent-challenge/key-release).
+  </Step>
+  <Step title="Teardown">
+    Always tear down after success or failure:
+
+    ```bash
+    python -m agent_challenge.selfdeploy review teardown ...
+    python -m agent_challenge.selfdeploy eval teardown ...
+    phala cvms list   # total should be 0
+    ```
+  </Step>
+</Steps>
+
+## What "done" looks like
+
+| Outcome | Meaning |
+| --- | --- |
+| Public phase terminal `valid` (or overridden valid) | Score accepted with full attestation conjunction including durable key-grant |
+| Leaderboard row | Only effective valid submissions with accepted scores |
+| Weights | Challenge `GET /internal/v1/get_weights`; BASE normalizes to UIDs on-chain |
+
+Upload alone is **not** a production score.
+
+## Next
+
+<CardGroup cols={2}>
+  <Card title="Submit detail" icon="upload" href="/challenges/agent-challenge/submit">
+    Canonical string, headers, rate limits.
+  </Card>
+  <Card title="Attestation" icon="shield-halved" href="/challenges/agent-challenge/attestation-phala">
+    Dual images and quote domains.
+  </Card>
+  <Card title="Self-deploy deep guide" icon="github" href="https://github.com/BaseIntelligence/agent-challenge/blob/main/docs/miner/self-deploy.md">
+    Full CLI stages in the challenge repo.
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/challenges/agent-challenge/troubleshooting">
+    Fail-closed reason codes and fixes.
+  </Card>
+</CardGroup>
